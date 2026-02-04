@@ -12,10 +12,17 @@ export interface Category {
   color: string;
 }
 
+export interface Tag {
+  id: string;
+  name: string;
+  color: string;
+}
+
 export interface TimeEntry {
   id: string;
   userId?: string;
   categoryId: string;
+  tagId?: string | null;
   description: string;
   startTime: Date;
   endTime: Date | null;

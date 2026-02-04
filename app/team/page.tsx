@@ -21,6 +21,9 @@ interface ActiveTimer {
   categoryId: string;
   categoryName: string;
   categoryColor: string;
+  tagId: string | null;
+  tagName: string | null;
+  tagColor: string | null;
   description: string;
   startTime: string;
   elapsedSeconds: number;
@@ -34,6 +37,9 @@ interface TeamEntry {
   categoryId: string;
   categoryName: string;
   categoryColor: string;
+  tagId: string | null;
+  tagName: string | null;
+  tagColor: string | null;
   description: string;
   startTime: string;
   endTime: string | null;
@@ -228,7 +234,14 @@ export default function TeamPage() {
                           style={{ backgroundColor: timer.categoryColor }}
                         />
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{timer.userName}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium truncate">{timer.userName}</p>
+                            {timer.tagName && (
+                              <span className="px-2 py-0.5 text-xs bg-white/10 rounded-full text-white/70 flex-shrink-0">
+                                {timer.tagName}
+                              </span>
+                            )}
+                          </div>
                           <p className="text-white/50 text-sm truncate">
                             {timer.categoryName}
                           </p>
@@ -324,7 +337,14 @@ export default function TeamPage() {
 
                         {/* Entry details */}
                         <div className="flex-1 min-w-0">
-                          <p className="text-white truncate">{entry.description}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-white truncate">{entry.description}</p>
+                            {entry.tagName && (
+                              <span className="px-2 py-0.5 text-xs bg-white/10 rounded-full text-white/70 flex-shrink-0">
+                                {entry.tagName}
+                              </span>
+                            )}
+                          </div>
                           <p className="text-white/40 text-sm">
                             {entry.categoryName} •{" "}
                             {formatTimeOfDay(new Date(entry.startTime))}

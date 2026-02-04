@@ -25,6 +25,9 @@ export async function GET() {
       categoryId: timer.category_id,
       categoryName: timer.category_name,
       categoryColor: timer.category_color,
+      tagId: timer.tag_id,
+      tagName: timer.tag_name,
+      tagColor: timer.tag_color,
       description: timer.description || '',
       startTime: timer.start_time,
       elapsedSeconds,
@@ -42,7 +45,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { categoryId, description, startTime } = body;
+  const { categoryId, tagId, description, startTime } = body;
 
   if (!categoryId || !startTime) {
     return NextResponse.json(
@@ -56,6 +59,7 @@ export async function POST(request: Request) {
     id,
     session.user.id,
     categoryId,
+    tagId || null,
     description || null,
     startTime
   );
@@ -75,7 +79,7 @@ export async function DELETE() {
   return NextResponse.json({ success: true });
 }
 
-// PATCH - Update active timer (category/description change)
+// PATCH - Update active timer (category/tag/description change)
 export async function PATCH(request: Request) {
   const session = await auth();
   if (!session?.user) {
@@ -83,7 +87,7 @@ export async function PATCH(request: Request) {
   }
 
   const body = await request.json();
-  const { categoryId, description } = body;
+  const { categoryId, tagId, description } = body;
 
   if (!categoryId) {
     return NextResponse.json(
@@ -92,7 +96,7 @@ export async function PATCH(request: Request) {
     );
   }
 
-  activeTimerQueries.update.run(categoryId, description || null, session.user.id);
+  activeTimerQueries.update.run(categoryId, tagId || null, description || null, session.user.id);
 
   return NextResponse.json({ success: true });
 }

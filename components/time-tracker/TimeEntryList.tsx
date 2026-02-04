@@ -4,11 +4,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { formatDuration, formatDate, formatTimeOfDay } from "@/lib/utils";
-import type { Category, TimeEntry } from "@/types";
+import type { Category, Tag, TimeEntry } from "@/types";
 
 interface TimeEntryListProps {
   entries: TimeEntry[];
   categories: Category[];
+  tags?: Tag[];
   onDeleteEntry: (id: string) => void;
   totalCount?: number; // Total entries before filtering
 }
@@ -16,6 +17,7 @@ interface TimeEntryListProps {
 export function TimeEntryList({
   entries,
   categories,
+  tags = [],
   onDeleteEntry,
   totalCount,
 }: TimeEntryListProps) {
@@ -25,6 +27,11 @@ export function TimeEntryList({
 
   const getCategoryColor = (categoryId: string): string => {
     return categories.find((c) => c.id === categoryId)?.color || "#ffffff";
+  };
+
+  const getTagName = (tagId: string | null | undefined): string | null => {
+    if (!tagId) return null;
+    return tags.find((t) => t.id === tagId)?.name || null;
   };
 
   // Group entries by date
@@ -107,7 +114,14 @@ export function TimeEntryList({
 
                   {/* Entry details */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-white truncate">{entry.description}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-white truncate">{entry.description}</p>
+                      {getTagName(entry.tagId) && (
+                        <span className="px-2 py-0.5 text-xs bg-white/10 rounded-full text-white/70 flex-shrink-0">
+                          {getTagName(entry.tagId)}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-white/40 text-sm">
                       {getCategoryName(entry.categoryId)} •{" "}
                       {formatTimeOfDay(new Date(entry.startTime))}

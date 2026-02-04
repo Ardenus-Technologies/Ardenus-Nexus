@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { categoryQueries, timeEntryQueries } from '@/lib/db';
+import { categoryQueries } from '@/lib/db';
 
 export async function DELETE(
   request: Request,

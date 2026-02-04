@@ -16,18 +16,28 @@ CREATE TABLE IF NOT EXISTS categories (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Tags table
+CREATE TABLE IF NOT EXISTS tags (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  color TEXT DEFAULT '#ffffff',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Time entries table
 CREATE TABLE IF NOT EXISTS time_entries (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
   category_id TEXT NOT NULL,
+  tag_id TEXT,
   description TEXT,
   start_time DATETIME NOT NULL,
   end_time DATETIME,
   duration INTEGER NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE,
+  FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE SET NULL
 );
 
 -- Sessions table for NextAuth
@@ -44,16 +54,19 @@ CREATE TABLE IF NOT EXISTS active_timers (
   id TEXT PRIMARY KEY,
   user_id TEXT UNIQUE NOT NULL,
   category_id TEXT NOT NULL,
+  tag_id TEXT,
   description TEXT,
   start_time DATETIME NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE,
+  FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE SET NULL
 );
 
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_time_entries_user_id ON time_entries(user_id);
 CREATE INDEX IF NOT EXISTS idx_time_entries_category_id ON time_entries(category_id);
+CREATE INDEX IF NOT EXISTS idx_time_entries_tag_id ON time_entries(tag_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(session_token);
 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_active_timers_user_id ON active_timers(user_id);

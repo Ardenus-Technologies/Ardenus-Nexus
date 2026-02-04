@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Button, Input, Card, CardHeader, CardContent } from "@/components/ui";
+import { TagManager } from "@/components/TagManager";
+import type { Tag } from "@/types";
 
 interface User {
   id: string;
@@ -17,6 +19,7 @@ interface User {
 export default function AdminUsersPage() {
   const { data: session } = useSession();
   const [users, setUsers] = useState<User[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -43,14 +46,93 @@ export default function AdminUsersPage() {
       }
     } catch {
       setError("Failed to load users");
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchUsers();
+  const fetchTags = useCallback(async () => {
+    try {
+      const res = await fetch("/api/tags");
+      if (res.ok) {
+        const data = await res.json();
+        setTags(data);
+      }
+    } catch {
+      // Tags are optional
+    }
   }, []);
+
+  useEffect(() => {
+    Promise.all([fetchUsers(), fetchTags()]).finally(() => {
+      setIsLoading(false);
+    });
+  }, [fetchTags]);
+
+  const handleAddTag = async (tag: Omit<Tag, "id">) => {
+    setError("");
+    try {
+      const res = await fetch("/api/tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(tag),
+      });
+      if (res.ok) {
+        const newTag = await res.json();
+        setTags((prev) => [...prev, newTag]);
+        setSuccess("Tag created successfully");
+        setTimeout(() => setSuccess(""), 3000);
+      } else {
+        const data = await res.json();
+        setError(data.error || "Failed to create tag");
+      }
+    } catch {
+      setError("Failed to create tag");
+    }
+  };
+
+  const handleEditTag = async (id: string, tag: Omit<Tag, "id">) => {
+    setError("");
+    try {
+      const res = await fetch(`/api/tags/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(tag),
+      });
+      if (res.ok) {
+        const updatedTag = await res.json();
+        setTags((prev) =>
+          prev.map((t) => (t.id === id ? updatedTag : t))
+        );
+        setSuccess("Tag updated successfully");
+        setTimeout(() => setSuccess(""), 3000);
+      } else {
+        const data = await res.json();
+        setError(data.error || "Failed to update tag");
+      }
+    } catch {
+      setError("Failed to update tag");
+    }
+  };
+
+  const handleDeleteTag = async (id: string, confirmation: string) => {
+    setError("");
+    try {
+      const res = await fetch(`/api/tags/${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmation }),
+      });
+      if (res.ok) {
+        setTags((prev) => prev.filter((t) => t.id !== id));
+        setSuccess("Tag deleted successfully");
+        setTimeout(() => setSuccess(""), 3000);
+      } else {
+        const data = await res.json();
+        setError(data.error || "Failed to delete tag");
+      }
+    } catch {
+      setError("Failed to delete tag");
+    }
+  };
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -427,6 +509,22 @@ export default function AdminUsersPage() {
             </motion.div>
           </div>
         </div>
+
+        {/* Tag Management */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="mt-8"
+        >
+          <TagManager
+            tags={tags}
+            onAddTag={handleAddTag}
+            onEditTag={handleEditTag}
+            onDeleteTag={handleDeleteTag}
+            isAdmin={true}
+          />
+        </motion.div>
       </div>
     </main>
   );

@@ -1,7 +1,7 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
-import { userQueries, sessionQueries, generateId } from './db';
+import { userQueries } from './db';
 
 declare module 'next-auth' {
   interface User {

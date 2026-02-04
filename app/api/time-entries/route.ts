@@ -15,6 +15,7 @@ export async function GET() {
     id: entry.id,
     userId: entry.user_id,
     categoryId: entry.category_id,
+    tagId: entry.tag_id,
     description: entry.description || '',
     startTime: entry.start_time,
     endTime: entry.end_time,
@@ -31,7 +32,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { categoryId, description, startTime, endTime, duration } = body;
+  const { categoryId, tagId, description, startTime, endTime, duration } = body;
 
   if (!categoryId || !startTime || duration === undefined) {
     return NextResponse.json(
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
     id,
     session.user.id,
     categoryId,
+    tagId || null,
     description || null,
     startTime,
     endTime || null,
@@ -61,6 +63,7 @@ export async function POST(request: Request) {
       id: entry.id,
       userId: entry.user_id,
       categoryId: entry.category_id,
+      tagId: entry.tag_id,
       description: entry.description || '',
       startTime: entry.start_time,
       endTime: entry.end_time,

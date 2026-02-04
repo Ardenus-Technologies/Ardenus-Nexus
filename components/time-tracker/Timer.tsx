@@ -7,19 +7,21 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Card, CardContent } from "@/components/ui/Card";
 import { formatTime } from "@/lib/utils";
-import type { Category, TimeEntry } from "@/types";
+import type { Category, Tag, TimeEntry } from "@/types";
 
 interface TimerProps {
   categories: Category[];
+  tags: Tag[];
   onTimeEntryComplete: (entry: Omit<TimeEntry, "id">) => void;
 }
 
-export function Timer({ categories, onTimeEntryComplete }: TimerProps) {
+export function Timer({ categories, tags, onTimeEntryComplete }: TimerProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [selectedCategoryId, setSelectedCategoryId] = useState(
     categories[0]?.id || ""
   );
+  const [selectedTagId, setSelectedTagId] = useState<string>("");
   const [description, setDescription] = useState("");
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [isRestoring, setIsRestoring] = useState(true);
@@ -42,6 +44,7 @@ export function Timer({ categories, onTimeEntryComplete }: TimerProps) {
             setStartTime(savedStartTime);
             setElapsedSeconds(elapsed);
             setSelectedCategoryId(data.category_id);
+            setSelectedTagId(data.tag_id || '');
             setDescription(data.description || '');
             setIsRunning(true);
           }
@@ -79,7 +82,7 @@ export function Timer({ categories, onTimeEntryComplete }: TimerProps) {
   }, [isRunning]);
 
   // Sync active timer to database
-  const syncActiveTimer = useCallback(async (action: 'start' | 'stop', categoryId?: string, desc?: string, start?: Date) => {
+  const syncActiveTimer = useCallback(async (action: 'start' | 'stop', categoryId?: string, tagId?: string, desc?: string, start?: Date) => {
     try {
       if (action === 'start' && start) {
         await fetch('/api/team/active', {
@@ -87,6 +90,7 @@ export function Timer({ categories, onTimeEntryComplete }: TimerProps) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             categoryId,
+            tagId: tagId || null,
             description: desc || '',
             startTime: start.toISOString(),
           }),
@@ -103,8 +107,8 @@ export function Timer({ categories, onTimeEntryComplete }: TimerProps) {
     const now = new Date();
     setIsRunning(true);
     setStartTime(now);
-    syncActiveTimer('start', selectedCategoryId, description, now);
-  }, [selectedCategoryId, description, syncActiveTimer]);
+    syncActiveTimer('start', selectedCategoryId, selectedTagId, description, now);
+  }, [selectedCategoryId, selectedTagId, description, syncActiveTimer]);
 
   const handlePause = useCallback(() => {
     setIsRunning(false);
@@ -119,6 +123,7 @@ export function Timer({ categories, onTimeEntryComplete }: TimerProps) {
     if (elapsedSeconds > 0 && startTime) {
       const entry: Omit<TimeEntry, "id"> = {
         categoryId: selectedCategoryId,
+        tagId: selectedTagId || null,
         description: description || "No description",
         startTime,
         endTime: new Date(),
@@ -134,10 +139,12 @@ export function Timer({ categories, onTimeEntryComplete }: TimerProps) {
     setElapsedSeconds(0);
     setStartTime(null);
     setDescription("");
+    setSelectedTagId("");
   }, [
     elapsedSeconds,
     startTime,
     selectedCategoryId,
+    selectedTagId,
     description,
     onTimeEntryComplete,
     syncActiveTimer,
@@ -193,6 +200,23 @@ export function Timer({ categories, onTimeEntryComplete }: TimerProps) {
               {categories.map((cat) => (
                 <option key={cat.id} value={cat.id} className="bg-black">
                   {cat.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+
+          <div>
+            <label htmlFor="timer-tag" className="text-eyebrow block mb-2">Tag (Optional)</label>
+            <Select
+              id="timer-tag"
+              value={selectedTagId}
+              onChange={(e) => setSelectedTagId(e.target.value)}
+              disabled={isRunning}
+            >
+              <option value="" className="bg-black">No tag</option>
+              {tags.map((tag) => (
+                <option key={tag.id} value={tag.id} className="bg-black">
+                  {tag.name}
                 </option>
               ))}
             </Select>

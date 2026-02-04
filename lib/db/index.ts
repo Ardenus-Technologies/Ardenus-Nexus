@@ -21,6 +21,42 @@ if (fs.existsSync(schemaPath)) {
   db.exec(schema);
 }
 
+// Migrations: Add tag_id column to existing tables if missing
+const migrations = [
+  {
+    name: 'add_tag_id_to_time_entries',
+    check: () => {
+      const columns = db.prepare("PRAGMA table_info(time_entries)").all() as { name: string }[];
+      return columns.some(col => col.name === 'tag_id');
+    },
+    run: () => {
+      db.exec('ALTER TABLE time_entries ADD COLUMN tag_id TEXT REFERENCES tags(id) ON DELETE SET NULL');
+    }
+  },
+  {
+    name: 'add_tag_id_to_active_timers',
+    check: () => {
+      const columns = db.prepare("PRAGMA table_info(active_timers)").all() as { name: string }[];
+      return columns.some(col => col.name === 'tag_id');
+    },
+    run: () => {
+      db.exec('ALTER TABLE active_timers ADD COLUMN tag_id TEXT REFERENCES tags(id) ON DELETE SET NULL');
+    }
+  }
+];
+
+// Run pending migrations
+for (const migration of migrations) {
+  if (!migration.check()) {
+    try {
+      migration.run();
+      console.log(`Migration applied: ${migration.name}`);
+    } catch (error) {
+      console.error(`Migration failed: ${migration.name}`, error);
+    }
+  }
+}
+
 // Types
 export interface DbUser {
   id: string;
@@ -38,10 +74,18 @@ export interface DbCategory {
   created_at: string;
 }
 
+export interface DbTag {
+  id: string;
+  name: string;
+  color: string;
+  created_at: string;
+}
+
 export interface DbTimeEntry {
   id: string;
   user_id: string;
   category_id: string;
+  tag_id: string | null;
   description: string | null;
   start_time: string;
   end_time: string | null;
@@ -60,6 +104,7 @@ export interface DbActiveTimer {
   id: string;
   user_id: string;
   category_id: string;
+  tag_id: string | null;
   description: string | null;
   start_time: string;
   created_at: string;
@@ -70,6 +115,8 @@ export interface DbActiveTimerWithUser extends DbActiveTimer {
   user_email: string;
   category_name: string;
   category_color: string;
+  tag_name: string | null;
+  tag_color: string | null;
 }
 
 export interface DbTimeEntryWithUser extends DbTimeEntry {
@@ -77,6 +124,8 @@ export interface DbTimeEntryWithUser extends DbTimeEntry {
   user_email: string;
   category_name: string;
   category_color: string;
+  tag_name: string | null;
+  tag_color: string | null;
 }
 
 // User queries
@@ -109,17 +158,30 @@ export const categoryQueries = {
   delete: db.prepare<[string]>('DELETE FROM categories WHERE id = ?'),
 };
 
+// Tag queries
+export const tagQueries = {
+  findAll: db.prepare<[], DbTag>('SELECT * FROM tags ORDER BY created_at ASC'),
+  findById: db.prepare<[string], DbTag>('SELECT * FROM tags WHERE id = ?'),
+  create: db.prepare<[string, string, string]>(
+    'INSERT INTO tags (id, name, color) VALUES (?, ?, ?)'
+  ),
+  update: db.prepare<[string, string, string]>(
+    'UPDATE tags SET name = ?, color = ? WHERE id = ?'
+  ),
+  delete: db.prepare<[string]>('DELETE FROM tags WHERE id = ?'),
+};
+
 // Time entry queries
 export const timeEntryQueries = {
   findByUserId: db.prepare<[string], DbTimeEntry>(
     'SELECT * FROM time_entries WHERE user_id = ? ORDER BY start_time DESC'
   ),
   findById: db.prepare<[string], DbTimeEntry>('SELECT * FROM time_entries WHERE id = ?'),
-  create: db.prepare<[string, string, string, string | null, string, string | null, number]>(
-    'INSERT INTO time_entries (id, user_id, category_id, description, start_time, end_time, duration) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  create: db.prepare<[string, string, string, string | null, string | null, string, string | null, number]>(
+    'INSERT INTO time_entries (id, user_id, category_id, tag_id, description, start_time, end_time, duration) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
   ),
-  update: db.prepare<[string, string | null, string, string | null, number, string]>(
-    'UPDATE time_entries SET category_id = ?, description = ?, start_time = ?, end_time = ?, duration = ? WHERE id = ?'
+  update: db.prepare<[string, string | null, string | null, string, string | null, number, string]>(
+    'UPDATE time_entries SET category_id = ?, tag_id = ?, description = ?, start_time = ?, end_time = ?, duration = ? WHERE id = ?'
   ),
   delete: db.prepare<[string]>('DELETE FROM time_entries WHERE id = ?'),
   deleteByUserId: db.prepare<[string]>('DELETE FROM time_entries WHERE user_id = ?'),
@@ -149,17 +211,20 @@ export const activeTimerQueries = {
       u.name as user_name,
       u.email as user_email,
       c.name as category_name,
-      c.color as category_color
+      c.color as category_color,
+      t.name as tag_name,
+      t.color as tag_color
     FROM active_timers at
     JOIN users u ON at.user_id = u.id
     JOIN categories c ON at.category_id = c.id
+    LEFT JOIN tags t ON at.tag_id = t.id
     ORDER BY at.start_time ASC
   `),
-  create: db.prepare<[string, string, string, string | null, string]>(
-    'INSERT OR REPLACE INTO active_timers (id, user_id, category_id, description, start_time) VALUES (?, ?, ?, ?, ?)'
+  create: db.prepare<[string, string, string, string | null, string | null, string]>(
+    'INSERT OR REPLACE INTO active_timers (id, user_id, category_id, tag_id, description, start_time) VALUES (?, ?, ?, ?, ?, ?)'
   ),
-  update: db.prepare<[string, string | null, string]>(
-    'UPDATE active_timers SET category_id = ?, description = ? WHERE user_id = ?'
+  update: db.prepare<[string, string | null, string | null, string]>(
+    'UPDATE active_timers SET category_id = ?, tag_id = ?, description = ? WHERE user_id = ?'
   ),
   deleteByUserId: db.prepare<[string]>('DELETE FROM active_timers WHERE user_id = ?'),
 };
@@ -172,10 +237,13 @@ export const teamQueries = {
       u.name as user_name,
       u.email as user_email,
       c.name as category_name,
-      c.color as category_color
+      c.color as category_color,
+      t.name as tag_name,
+      t.color as tag_color
     FROM time_entries te
     JOIN users u ON te.user_id = u.id
     JOIN categories c ON te.category_id = c.id
+    LEFT JOIN tags t ON te.tag_id = t.id
     ORDER BY te.start_time DESC
     LIMIT 100
   `),
@@ -185,10 +253,13 @@ export const teamQueries = {
       u.name as user_name,
       u.email as user_email,
       c.name as category_name,
-      c.color as category_color
+      c.color as category_color,
+      t.name as tag_name,
+      t.color as tag_color
     FROM time_entries te
     JOIN users u ON te.user_id = u.id
     JOIN categories c ON te.category_id = c.id
+    LEFT JOIN tags t ON te.tag_id = t.id
     WHERE te.start_time >= ? AND te.start_time < ?
     ORDER BY te.start_time DESC
   `),

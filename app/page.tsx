@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { motion } from "framer-motion";
 import { Timer, TimeEntryList, CategoryManager, Summary } from "@/components/time-tracker";
 import { Header } from "@/components/Header";
-import { DEFAULT_CATEGORIES, type Category, type TimeEntry } from "@/types";
+import { DEFAULT_CATEGORIES, type Category, type Tag, type TimeEntry } from "@/types";
 import {
   TimeEntryFilters,
   FilterState,
@@ -16,6 +16,7 @@ import {
 export default function Home() {
   const { data: session, status } = useSession();
   const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +34,19 @@ export default function Home() {
       }
     } catch {
       setError("Failed to load categories");
+    }
+  }, []);
+
+  // Fetch tags from API
+  const fetchTags = useCallback(async () => {
+    try {
+      const res = await fetch("/api/tags");
+      if (res.ok) {
+        const data = await res.json();
+        setTags(data);
+      }
+    } catch {
+      // Tags are optional, don't set error
     }
   }, []);
 
@@ -60,11 +74,11 @@ export default function Home() {
   // Load data on mount
   useEffect(() => {
     if (status === "authenticated") {
-      Promise.all([fetchCategories(), fetchEntries()]).then(() => {
+      Promise.all([fetchCategories(), fetchTags(), fetchEntries()]).then(() => {
         setIsLoaded(true);
       });
     }
-  }, [status, fetchCategories, fetchEntries]);
+  }, [status, fetchCategories, fetchTags, fetchEntries]);
 
   const handleTimeEntryComplete = async (entry: Omit<TimeEntry, "id">) => {
     setError(null);
@@ -74,6 +88,7 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           categoryId: entry.categoryId,
+          tagId: entry.tagId || null,
           description: entry.description,
           startTime: entry.startTime.toISOString(),
           endTime: entry.endTime?.toISOString() || null,
@@ -225,6 +240,7 @@ export default function Home() {
             >
               <Timer
                 categories={categories}
+                tags={tags}
                 onTimeEntryComplete={handleTimeEntryComplete}
               />
             </motion.div>
@@ -251,6 +267,7 @@ export default function Home() {
               <TimeEntryList
                 entries={filteredEntries}
                 categories={categories}
+                tags={tags}
                 onDeleteEntry={handleDeleteEntry}
                 totalCount={entries.length}
               />
