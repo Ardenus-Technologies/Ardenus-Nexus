@@ -205,6 +205,18 @@
     @apply border-white/30;
   }
 
+  /* Date Input Calendar Icon */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+  }
+
   /* Select */
   .select {
     @apply w-full appearance-none bg-transparent border-b border-white/10
