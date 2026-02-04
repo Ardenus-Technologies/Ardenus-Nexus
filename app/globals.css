@@ -2,26 +2,264 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================
+   ARDENUS DESIGN SYSTEM - CSS VARIABLES
+   ============================================ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Background Colors */
+  --bg-primary: 0 0 0;
+  --bg-secondary: 26 26 26;
+  --bg-elevated: 255 255 255;
+
+  /* Text Colors */
+  --text-primary: 255 255 255;
+  --text-secondary: 160 160 160;
+  --text-muted: 79 79 79;
+
+  /* Border Colors */
+  --border-default: 255 255 255;
+  --border-hover: 79 79 79;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ============================================
+   BASE STYLES
+   ============================================ */
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-black text-white font-body antialiased;
+    line-height: 1.75;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading font-bold tracking-tight;
+    line-height: 1.1;
+  }
+
+  ::selection {
+    @apply bg-white/20 text-white;
   }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-}
+/* ============================================
+   TYPOGRAPHY - FLUID SIZING
+   ============================================ */
 
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
+  /* Display Text */
+  .text-display-1 {
+    font-size: clamp(3rem, 6vw, 5rem);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+  }
+
+  .text-display-2 {
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
+  .text-display-3 {
+    font-size: clamp(2rem, 4vw, 3rem);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
+  /* Headings */
+  .text-heading-1 {
+    font-size: clamp(1.5rem, 3vw, 2.5rem);
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+
+  .text-heading-2 {
+    font-size: clamp(1.25rem, 2vw, 1.75rem);
+    line-height: 1.2;
+  }
+
+  .text-heading-3 {
+    font-size: clamp(1rem, 1.5vw, 1.25rem);
+    line-height: 1.3;
+  }
+
+  /* Special Text Styles */
+  .text-eyebrow {
+    @apply text-xs uppercase tracking-[0.1em] text-white/50;
+  }
+
+  .uppercase-wide {
+    @apply uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  /* Fluid Spacing */
+  .section-py-sm {
+    padding-top: clamp(0.75rem, 2vw, 1.5rem);
+    padding-bottom: clamp(0.75rem, 2vw, 1.5rem);
+  }
+
+  .section-py-md {
+    padding-top: clamp(1.5rem, 4vw, 3rem);
+    padding-bottom: clamp(1.5rem, 4vw, 3rem);
+  }
+
+  .section-py-lg {
+    padding-top: clamp(2.5rem, 6vw, 5.5rem);
+    padding-bottom: clamp(2.5rem, 6vw, 5.5rem);
+  }
+
+  .container-margins {
+    padding-left: clamp(1rem, 4vw, 3.5rem);
+    padding-right: clamp(1rem, 4vw, 3.5rem);
+  }
+
+  /* Gap Utilities */
+  .gap-fluid-sm {
+    gap: clamp(0.5rem, 1vw, 0.75rem);
+  }
+
+  .gap-fluid-md {
+    gap: clamp(1rem, 2vw, 1.5rem);
+  }
+
+  .gap-fluid-lg {
+    gap: clamp(1.5rem, 3vw, 2.5rem);
+  }
+}
+
+/* ============================================
+   COMPONENT STYLES
+   ============================================ */
+
+@layer components {
+  /* Buttons */
+  .btn {
+    @apply inline-flex items-center justify-center
+           rounded-full border border-white/10
+           px-6 py-3
+           text-xs font-medium uppercase tracking-[0.1em]
+           transition-all duration-300;
+  }
+
+  .btn-primary {
+    @apply bg-white text-black border-white;
+  }
+
+  .btn-primary:hover {
+    @apply bg-transparent text-white border-white/50;
+  }
+
+  .btn-secondary {
+    @apply bg-transparent text-white border-white/10;
+  }
+
+  .btn-secondary:hover {
+    @apply bg-white text-black border-white;
+  }
+
+  .btn-sm {
+    @apply px-4 py-2 text-xs;
+  }
+
+  .btn-lg {
+    @apply px-8 py-4 text-sm;
+  }
+
+  /* Cards */
+  .card {
+    @apply border border-white/10 bg-transparent rounded-lg
+           transition-all duration-300;
+  }
+
+  .card:hover {
+    @apply border-[#4f4f4f];
+  }
+
+  /* Input Fields */
+  .input {
+    @apply w-full bg-transparent border-b border-white/10
+           py-3 text-white placeholder:text-[#4f4f4f]
+           transition-colors duration-300 outline-none;
+  }
+
+  .input:focus {
+    @apply border-white/50;
+  }
+
+  .input-bordered {
+    @apply w-full bg-transparent border border-white/10 rounded-lg
+           px-4 py-3 text-white placeholder:text-[#4f4f4f]
+           transition-colors duration-300 outline-none;
+  }
+
+  .input-bordered:focus {
+    @apply border-white/30;
+  }
+
+  /* Select */
+  .select {
+    @apply w-full appearance-none bg-transparent border-b border-white/10
+           py-3 text-white cursor-pointer
+           transition-colors duration-300 outline-none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ffffff' d='M6 8L1 3h10L6 8z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0 center;
+  }
+
+  .select:focus {
+    @apply border-white/50;
+  }
+
+  /* Timer Display */
+  .timer-display {
+    font-variant-numeric: tabular-nums;
+    @apply font-heading;
+  }
+
+  /* Subtle Borders */
+  .border-subtle {
+    border-color: rgb(255 255 255 / 0.1);
+  }
+
+  .border-hover {
+    border-color: rgb(79 79 79);
+  }
+
+  /* Backgrounds */
+  .bg-elevated {
+    background-color: rgb(255 255 255 / 0.05);
+  }
+
+  /* Scrollbar */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

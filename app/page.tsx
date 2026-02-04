@@ -1,101 +1,298 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useSession } from "next-auth/react";
+import { motion } from "framer-motion";
+import { Timer, TimeEntryList, CategoryManager, Summary } from "@/components/time-tracker";
+import { Header } from "@/components/Header";
+import { DEFAULT_CATEGORIES, type Category, type TimeEntry } from "@/types";
+import {
+  TimeEntryFilters,
+  FilterState,
+  filterEntries,
+  defaultFilters,
+} from "@/components/time-tracker/TimeEntryFilters";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const { status } = useSession();
+  const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
+  const [entries, setEntries] = useState<TimeEntry[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [filters, setFilters] = useState<FilterState>(defaultFilters);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  // Fetch categories from API
+  const fetchCategories = useCallback(async () => {
+    try {
+      const res = await fetch("/api/categories");
+      if (res.ok) {
+        const data = await res.json();
+        setCategories(data);
+      } else {
+        setError("Failed to load categories");
+      }
+    } catch {
+      setError("Failed to load categories");
+    }
+  }, []);
+
+  // Fetch entries from API
+  const fetchEntries = useCallback(async () => {
+    try {
+      const res = await fetch("/api/time-entries");
+      if (res.ok) {
+        const data = await res.json();
+        // Convert date strings to Date objects
+        const entriesWithDates = data.map((e: TimeEntry & { startTime: string; endTime: string | null }) => ({
+          ...e,
+          startTime: new Date(e.startTime),
+          endTime: e.endTime ? new Date(e.endTime) : null,
+        }));
+        setEntries(entriesWithDates);
+      } else {
+        setError("Failed to load time entries");
+      }
+    } catch {
+      setError("Failed to load time entries");
+    }
+  }, []);
+
+  // Load data on mount
+  useEffect(() => {
+    if (status === "authenticated") {
+      Promise.all([fetchCategories(), fetchEntries()]).then(() => {
+        setIsLoaded(true);
+      });
+    }
+  }, [status, fetchCategories, fetchEntries]);
+
+  const handleTimeEntryComplete = async (entry: Omit<TimeEntry, "id">) => {
+    setError(null);
+    try {
+      const res = await fetch("/api/time-entries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          categoryId: entry.categoryId,
+          description: entry.description,
+          startTime: entry.startTime.toISOString(),
+          endTime: entry.endTime?.toISOString() || null,
+          duration: entry.duration,
+        }),
+      });
+
+      if (res.ok) {
+        const newEntry = await res.json();
+        setEntries((prev) => [
+          {
+            ...newEntry,
+            startTime: new Date(newEntry.startTime),
+            endTime: newEntry.endTime ? new Date(newEntry.endTime) : null,
+          },
+          ...prev,
+        ]);
+      } else {
+        const data = await res.json();
+        setError(data.error || "Failed to save time entry");
+      }
+    } catch {
+      setError("Failed to save time entry");
+    }
+  };
+
+  const handleDeleteEntry = async (id: string) => {
+    setError(null);
+    try {
+      const res = await fetch(`/api/time-entries/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setEntries((prev) => prev.filter((e) => e.id !== id));
+      } else {
+        const data = await res.json();
+        setError(data.error || "Failed to delete entry");
+      }
+    } catch {
+      setError("Failed to delete entry");
+    }
+  };
+
+  const handleAddCategory = async (category: Category) => {
+    setError(null);
+    try {
+      const res = await fetch("/api/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: category.name, color: category.color }),
+      });
+
+      if (res.ok) {
+        const newCategory = await res.json();
+        setCategories((prev) => [...prev, newCategory]);
+      } else {
+        const data = await res.json();
+        setError(data.error || "Failed to create category");
+      }
+    } catch {
+      setError("Failed to create category");
+    }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    setError(null);
+    // Don't delete if there are entries using this category
+    const hasEntries = entries.some((e) => e.categoryId === id);
+    if (hasEntries) {
+      setError("Cannot delete category with existing time entries");
+      return;
+    }
+    // Don't delete if it's the last category
+    if (categories.length <= 1) {
+      setError("Must have at least one category");
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/categories/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setCategories((prev) => prev.filter((c) => c.id !== id));
+      } else {
+        const data = await res.json();
+        setError(data.error || "Failed to delete category");
+      }
+    } catch {
+      setError("Failed to delete category");
+    }
+  };
+
+  // Filter entries based on current filters (convert Date to string for filtering)
+  const filteredEntries = useMemo(() => {
+    const entriesForFilter = entries.map((e) => ({
+      ...e,
+      startTime: e.startTime instanceof Date ? e.startTime.toISOString() : e.startTime,
+    }));
+    const filtered = filterEntries(entriesForFilter, filters);
+    // Convert back to Date objects
+    return filtered.map((e) => ({
+      ...e,
+      startTime: new Date(e.startTime),
+      endTime: e.endTime ? new Date(e.endTime) : null,
+    })) as TimeEntry[];
+  }, [entries, filters]);
+
+  if (status === "loading" || !isLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <motion.div
+          className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <main className="min-h-screen container-margins section-py-lg">
+      <div className="max-w-[1400px] mx-auto">
+        {/* Header with user info */}
+        <Header />
+
+        {/* Error message */}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400"
           >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            {error}
+            <button
+              onClick={() => setError(null)}
+              aria-label="Dismiss error"
+              className="ml-4 text-white/50 hover:text-white"
+            >
+              <span aria-hidden="true">x</span>
+            </button>
+          </motion.div>
+        )}
+
+        {/* Main Grid */}
+        <div className="grid lg:grid-cols-[1fr_400px] gap-fluid-lg">
+          {/* Left Column - Timer and Entries */}
+          <div className="space-y-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <Timer
+                categories={categories}
+                onTimeEntryComplete={handleTimeEntryComplete}
+              />
+            </motion.div>
+
+            {/* Filters for personal entries */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+            >
+              <TimeEntryFilters
+                filters={filters}
+                onFiltersChange={setFilters}
+                categories={categories}
+                showUserFilter={false}
+              />
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <TimeEntryList
+                entries={filteredEntries}
+                categories={categories}
+                onDeleteEntry={handleDeleteEntry}
+                totalCount={entries.length}
+              />
+            </motion.div>
+          </div>
+
+          {/* Right Column - Categories and Summary */}
+          <div className="space-y-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <CategoryManager
+                categories={categories}
+                onAddCategory={handleAddCategory}
+                onDeleteCategory={handleDeleteCategory}
+              />
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+            >
+              <Summary entries={entries} categories={categories} />
+            </motion.div>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+
+        {/* Footer */}
+        <motion.footer
+          className="mt-16 pt-8 border-t border-white/10 text-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
         >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+          <p className="text-white/30 text-sm">
+            Ardenus Time Tracker
+          </p>
+        </motion.footer>
+      </div>
+    </main>
   );
 }

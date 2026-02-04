@@ -1,0 +1,40 @@
+# Dependencies
+node_modules
+npm-debug.log*
+
+# Next.js
+.next
+out
+
+# Production
+build
+
+# Debug
+npm-debug.log*
+
+# Local env files
+.env*.local
+
+# Testing
+coverage
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data
+data/
+
+# Git
+.git
+.gitignore
+
+# Docs
+README.md
+*.md
