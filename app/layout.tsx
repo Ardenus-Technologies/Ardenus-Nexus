@@ -19,8 +19,8 @@ const typold = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Ardenus Time Tracker",
-  description: "Track time spent on categories for Ardenus",
+  title: "Ardenus Nexus",
+  description: "Ardenus team time tracking and management",
   icons: {
     icon: "/assets/favicon.png",
   },

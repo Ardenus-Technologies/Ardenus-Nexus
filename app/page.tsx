@@ -347,7 +347,7 @@ export default function Home() {
           transition={{ delay: 0.5 }}
         >
           <p className="text-white/50 text-sm">
-            Ardenus Time Tracker
+            Ardenus Nexus
           </p>
         </motion.footer>
       </div>

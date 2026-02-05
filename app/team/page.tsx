@@ -502,7 +502,7 @@ export default function TeamPage() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.35 }}
         >
-          <p className="text-white/50 text-sm">Ardenus Time Tracker - Team View</p>
+          <p className="text-white/50 text-sm">Ardenus Nexus - Team View</p>
         </motion.footer>
       </div>
     </main>
