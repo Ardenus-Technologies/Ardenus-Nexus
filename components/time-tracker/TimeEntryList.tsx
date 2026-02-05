@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { formatDuration, formatDate, formatTimeOfDay } from "@/lib/utils";
+import { EditEntryModal } from "./EditEntryModal";
 import type { Category, Tag, TimeEntry } from "@/types";
 
 interface TimeEntryListProps {
@@ -12,6 +13,7 @@ interface TimeEntryListProps {
   categories: Category[];
   tags?: Tag[];
   onDeleteEntry: (id: string) => void;
+  onEditEntry?: (id: string, updates: { categoryId: string; tagId: string | null; description: string }) => Promise<void>;
   totalCount?: number;
 }
 
@@ -20,9 +22,11 @@ export function TimeEntryList({
   categories,
   tags = [],
   onDeleteEntry,
+  onEditEntry,
   totalCount,
 }: TimeEntryListProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
 
   const getCategoryName = (categoryId: string): string => {
     return categories.find((c) => c.id === categoryId)?.name || "Unknown";
@@ -168,6 +172,32 @@ export function TimeEntryList({
                         </p>
                       </div>
 
+                      {/* Edit button */}
+                      {onEditEntry && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingEntry(entry)}
+                          aria-label={`Edit time entry: ${entry.description}`}
+                          className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            aria-hidden="true"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                            />
+                          </svg>
+                        </Button>
+                      )}
+
                       {/* Delete button */}
                       <Button
                         variant="ghost"
@@ -199,6 +229,20 @@ export function TimeEntryList({
           </div>
         ))}
       </CardContent>
+
+      {onEditEntry && (
+        <EditEntryModal
+          entry={editingEntry}
+          categories={categories}
+          tags={tags}
+          isOpen={editingEntry !== null}
+          onClose={() => setEditingEntry(null)}
+          onSave={async (id, updates) => {
+            await onEditEntry(id, updates);
+            setEditingEntry(null);
+          }}
+        />
+      )}
     </Card>
   );
 }

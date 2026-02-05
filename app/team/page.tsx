@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Button, Card, CardHeader, CardContent } from "@/components/ui";
+import { Card, CardHeader, CardContent } from "@/components/ui";
 import { formatTime, formatDuration, formatDate, formatTimeOfDay } from "@/lib/utils";
 import {
   TimeEntryFilters,
@@ -61,7 +60,6 @@ interface User {
 
 export default function TeamPage() {
   const { data: session, status } = useSession();
-  const router = useRouter();
   const [activeTimers, setActiveTimers] = useState<ActiveTimer[]>([]);
   const [entries, setEntries] = useState<TeamEntry[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -213,11 +211,11 @@ export default function TeamPage() {
         setIsLoading(false);
       });
 
-      // Refresh active timers and rooms every 30 seconds
+      // Refresh active timers and rooms every 3 seconds
       const interval = setInterval(() => {
         fetchActiveTimers();
         fetchRooms();
-      }, 30000);
+      }, 3000);
       return () => clearInterval(interval);
     }
   }, [status, fetchActiveTimers, fetchEntries, fetchCategories, fetchUsers, fetchRooms]);
@@ -277,21 +275,16 @@ export default function TeamPage() {
   return (
     <main id="main-content" className="min-h-screen container-margins section-py-lg">
       <div className="max-w-[1200px] mx-auto">
-        {/* Header */}
-        <motion.header
-          className="mb-12 flex items-center justify-between"
+        {/* Page title */}
+        <motion.div
+          className="mb-12"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <div>
-            <p className="text-eyebrow mb-2">Team</p>
-            <h1 className="text-display-3 font-heading">Activity Dashboard</h1>
-          </div>
-          <Button variant="secondary" size="sm" onClick={() => router.push("/")}>
-            Back to Tracker
-          </Button>
-        </motion.header>
+          <p className="text-eyebrow mb-2">Team</p>
+          <h1 className="text-display-3 font-heading">Activity Dashboard</h1>
+        </motion.div>
 
         {error && (
           <motion.div

@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { motion } from "framer-motion";
 import { Timer, TimeEntryList, CategoryManager, Summary } from "@/components/time-tracker";
-import { Header } from "@/components/Header";
 import { DEFAULT_CATEGORIES, type Category, type Tag, type TimeEntry } from "@/types";
 import {
   TimeEntryFilters,
@@ -130,6 +129,34 @@ export default function Home() {
     }
   };
 
+  const handleEditEntry = async (id: string, updates: { categoryId: string; tagId: string | null; description: string }) => {
+    setError(null);
+    const res = await fetch(`/api/time-entries/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setEntries((prev) =>
+        prev.map((e) =>
+          e.id === id
+            ? {
+                ...e,
+                categoryId: updated.categoryId,
+                tagId: updated.tagId,
+                description: updated.description,
+              }
+            : e
+        )
+      );
+    } else {
+      const data = await res.json();
+      setError(data.error || "Failed to update entry");
+      throw new Error(data.error || "Failed to update entry");
+    }
+  };
+
   const handleAddCategory = async (category: Category) => {
     setError(null);
     try {
@@ -211,9 +238,6 @@ export default function Home() {
   return (
     <main id="main-content" className="min-h-screen container-margins section-py-lg">
       <div className="max-w-[1400px] mx-auto">
-        {/* Header with user info */}
-        <Header />
-
         {/* Error message */}
         {error && (
           <motion.div
@@ -235,8 +259,17 @@ export default function Home() {
           </motion.div>
         )}
 
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="mb-6"
+        >
+          <h1 className="text-display-2 font-heading">Nexus</h1>
+        </motion.div>
+
         {/* Main Grid */}
-        <div className="grid lg:grid-cols-[1fr_400px] gap-fluid-lg">
+        <div className="grid lg:grid-cols-[1fr_minmax(0,350px)] gap-fluid-lg">
           {/* Left Column - Timer and Entries */}
           <div className="space-y-8">
             <motion.div
@@ -275,6 +308,7 @@ export default function Home() {
                 categories={categories}
                 tags={tags}
                 onDeleteEntry={handleDeleteEntry}
+                onEditEntry={handleEditEntry}
                 totalCount={entries.length}
               />
             </motion.div>

@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
-import { Button, Card, CardContent, Select } from "@/components/ui";
+import { Card, CardContent, Select } from "@/components/ui";
 import { formatDuration } from "@/lib/utils";
 
 const StatsChart = dynamic(() => import("@/components/admin/StatsChart"), {
@@ -85,8 +85,8 @@ export default function AdminStatsPage() {
   return (
     <main id="main-content" className="min-h-screen container-margins section-py-lg">
       <div className="max-w-[1200px] mx-auto">
-        {/* Header */}
-        <motion.header
+        {/* Page title */}
+        <motion.div
           className="mb-12 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -96,26 +96,17 @@ export default function AdminStatsPage() {
             <p className="text-eyebrow mb-2">Admin</p>
             <h1 className="text-display-3 font-heading">Team Statistics</h1>
           </div>
-          <div className="flex items-center gap-3">
-            <Select
-              value={period}
-              onChange={(e) => setPeriod(e.target.value)}
-              className="w-40"
-              aria-label="Time period"
-            >
-              <option value="week">This Week</option>
-              <option value="month">This Month</option>
-              <option value="all">All Time</option>
-            </Select>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => router.push("/")}
-            >
-              Back to Tracker
-            </Button>
-          </div>
-        </motion.header>
+          <Select
+            value={period}
+            onChange={(e) => setPeriod(e.target.value)}
+            className="w-40"
+            aria-label="Time period"
+          >
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+            <option value="all">All Time</option>
+          </Select>
+        </motion.div>
 
         {error && (
           <motion.div

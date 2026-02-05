@@ -278,21 +278,16 @@ export default function AdminUsersPage() {
   return (
     <main id="main-content" className="min-h-screen container-margins section-py-lg">
       <div className="max-w-[1000px] mx-auto">
-        {/* Header */}
-        <motion.header
-          className="mb-12 flex items-center justify-between"
+        {/* Page title */}
+        <motion.div
+          className="mb-12"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <div>
-            <p className="text-eyebrow mb-2">Admin</p>
-            <h1 className="text-display-3 font-heading">User Management</h1>
-          </div>
-          <Button variant="secondary" size="sm" onClick={() => router.push("/")}>
-            Back to Tracker
-          </Button>
-        </motion.header>
+          <p className="text-eyebrow mb-2">Admin</p>
+          <h1 className="text-display-3 font-heading">User Management</h1>
+        </motion.div>
 
         {error && (
           <motion.div

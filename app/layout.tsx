@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Providers } from "@/components/Providers";
+import { Header } from "@/components/Header";
 import "./globals.css";
 
 const nurom = localFont({
@@ -20,6 +21,9 @@ const typold = localFont({
 export const metadata: Metadata = {
   title: "Ardenus Time Tracker",
   description: "Track time spent on categories for Ardenus",
+  icons: {
+    icon: "/assets/favicon.png",
+  },
 };
 
 export default function RootLayout({
@@ -36,7 +40,10 @@ export default function RootLayout({
         >
           Skip to main content
         </a>
-        <Providers>{children}</Providers>
+        <Providers>
+          <Header />
+          {children}
+        </Providers>
       </body>
     </html>
   );
