@@ -22,19 +22,27 @@ export async function PUT(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const { categoryId, tagId, description } = await request.json();
+  const { categoryId, tagId, description, startTime, endTime, duration } = await request.json();
 
   if (!categoryId || !description) {
     return NextResponse.json({ error: 'Category and description are required' }, { status: 400 });
+  }
+
+  const newStartTime = startTime || entry.start_time;
+  const newEndTime = endTime || entry.end_time;
+  const newDuration = duration ?? entry.duration;
+
+  if (startTime && endTime && new Date(endTime) <= new Date(startTime)) {
+    return NextResponse.json({ error: 'End time must be after start time' }, { status: 400 });
   }
 
   timeEntryQueries.update.run(
     categoryId,
     tagId || null,
     description,
-    entry.start_time,
-    entry.end_time,
-    entry.duration,
+    newStartTime,
+    newEndTime,
+    newDuration,
     id
   );
 

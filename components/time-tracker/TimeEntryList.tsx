@@ -13,7 +13,7 @@ interface TimeEntryListProps {
   categories: Category[];
   tags?: Tag[];
   onDeleteEntry: (id: string) => void;
-  onEditEntry?: (id: string, updates: { categoryId: string; tagId: string | null; description: string }) => Promise<void>;
+  onEditEntry?: (id: string, updates: { categoryId: string; tagId: string | null; description: string; startTime: string; endTime: string; duration: number }) => Promise<void>;
   totalCount?: number;
 }
 

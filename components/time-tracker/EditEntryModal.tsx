@@ -11,13 +11,16 @@ interface EditEntryModalProps {
   tags: Tag[];
   isOpen: boolean;
   onClose: () => void;
-  onSave: (id: string, updates: { categoryId: string; tagId: string | null; description: string }) => Promise<void>;
+  onSave: (id: string, updates: { categoryId: string; tagId: string | null; description: string; startTime: string; endTime: string; duration: number }) => Promise<void>;
 }
 
 export function EditEntryModal({ entry, categories, tags, isOpen, onClose, onSave }: EditEntryModalProps) {
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [tagId, setTagId] = useState<string>("");
+  const [date, setDate] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -30,6 +33,15 @@ export function EditEntryModal({ entry, categories, tags, isOpen, onClose, onSav
       setDescription(entry.description);
       setCategoryId(entry.categoryId);
       setTagId(entry.tagId || "");
+      const start = new Date(entry.startTime);
+      setDate(start.toLocaleDateString("en-CA")); // YYYY-MM-DD
+      setStartTime(start.toTimeString().slice(0, 5)); // HH:MM
+      if (entry.endTime) {
+        const end = new Date(entry.endTime);
+        setEndTime(end.toTimeString().slice(0, 5));
+      } else {
+        setEndTime("");
+      }
       setError("");
     }
   }, [entry]);
@@ -81,6 +93,21 @@ export function EditEntryModal({ entry, categories, tags, isOpen, onClose, onSav
       return;
     }
 
+    if (!date || !startTime || !endTime) {
+      setError("Date, start time, and end time are required");
+      return;
+    }
+
+    const startISO = new Date(`${date}T${startTime}:00`).toISOString();
+    const endISO = new Date(`${date}T${endTime}:00`).toISOString();
+
+    if (endISO <= startISO) {
+      setError("End time must be after start time");
+      return;
+    }
+
+    const durationSec = Math.round((new Date(endISO).getTime() - new Date(startISO).getTime()) / 1000);
+
     if (!entry) return;
 
     setIsLoading(true);
@@ -89,6 +116,9 @@ export function EditEntryModal({ entry, categories, tags, isOpen, onClose, onSav
         categoryId,
         tagId: tagId || null,
         description: description.trim(),
+        startTime: startISO,
+        endTime: endISO,
+        duration: durationSec,
       });
       handleClose();
     } catch {
@@ -203,6 +233,55 @@ export function EditEntryModal({ entry, categories, tags, isOpen, onClose, onSav
                       </option>
                     ))}
                   </Select>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="edit-date"
+                    className="block text-sm text-white/70 mb-2 uppercase tracking-wider"
+                  >
+                    Date
+                  </label>
+                  <Input
+                    id="edit-date"
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label
+                      htmlFor="edit-start-time"
+                      className="block text-sm text-white/70 mb-2 uppercase tracking-wider"
+                    >
+                      Start Time
+                    </label>
+                    <Input
+                      id="edit-start-time"
+                      type="time"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="edit-end-time"
+                      className="block text-sm text-white/70 mb-2 uppercase tracking-wider"
+                    >
+                      End Time
+                    </label>
+                    <Input
+                      id="edit-end-time"
+                      type="time"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                      required
+                    />
+                  </div>
                 </div>
 
                 {error && (

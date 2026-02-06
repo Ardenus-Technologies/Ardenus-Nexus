@@ -129,7 +129,7 @@ export default function Home() {
     }
   };
 
-  const handleEditEntry = async (id: string, updates: { categoryId: string; tagId: string | null; description: string }) => {
+  const handleEditEntry = async (id: string, updates: { categoryId: string; tagId: string | null; description: string; startTime: string; endTime: string; duration: number }) => {
     setError(null);
     const res = await fetch(`/api/time-entries/${id}`, {
       method: "PUT",
@@ -146,6 +146,9 @@ export default function Home() {
                 categoryId: updated.categoryId,
                 tagId: updated.tagId,
                 description: updated.description,
+                startTime: new Date(updated.startTime),
+                endTime: updated.endTime ? new Date(updated.endTime) : null,
+                duration: updated.duration,
               }
             : e
         )
