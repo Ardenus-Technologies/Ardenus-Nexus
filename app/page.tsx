@@ -272,9 +272,9 @@ export default function Home() {
         </motion.div>
 
         {/* Main Grid */}
-        <div className="grid lg:grid-cols-[1fr_minmax(0,350px)] gap-fluid-lg">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(0,350px)] gap-fluid-lg">
           {/* Left Column - Timer and Entries */}
-          <div className="space-y-8">
+          <div className="space-y-8 min-w-0">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -318,7 +318,7 @@ export default function Home() {
           </div>
 
           {/* Right Column - Categories and Summary */}
-          <div className="space-y-8">
+          <div className="space-y-8 min-w-0">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
