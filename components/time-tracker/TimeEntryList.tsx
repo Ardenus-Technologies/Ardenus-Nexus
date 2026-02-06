@@ -100,7 +100,7 @@ export function TimeEntryList({
       <CardContent className="p-0">
         {Object.entries(groupedEntries).map(([date, dateEntries]) => (
           <div key={date}>
-            <div className="px-6 py-3 bg-white/5 border-b border-white/10">
+            <div className="px-4 py-2 sm:px-6 sm:py-3 bg-white/5 border-b border-white/10">
               <span className="text-eyebrow">{date}</span>
               <span className="text-white/60 ml-4 text-sm">
                 {formatDuration(
@@ -116,10 +116,10 @@ export function TimeEntryList({
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
                   transition={{ delay: index * 0.05 }}
-                  className="px-6 py-4 border-b border-white/5 last:border-0 group hover:bg-white/[0.02] transition-colors"
+                  className="px-4 py-3 sm:px-6 sm:py-4 border-b border-white/5 last:border-0 group hover:bg-white/[0.02] transition-colors"
                 >
                   {deletingId === entry.id ? (
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center justify-between gap-3 sm:gap-4">
                       <p className="text-white/70 text-sm">Delete this entry?</p>
                       <div className="flex gap-2">
                         <Button
@@ -140,10 +140,10 @@ export function TimeEntryList({
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-start sm:items-center gap-3 sm:gap-4">
                       {/* Category indicator */}
                       <div
-                        className="w-1 h-10 rounded-full"
+                        className="w-1 h-8 sm:h-10 rounded-full flex-shrink-0"
                         style={{ backgroundColor: getCategoryColor(entry.categoryId) }}
                       />
 
@@ -165,21 +165,47 @@ export function TimeEntryList({
                         </p>
                       </div>
 
-                      {/* Duration */}
-                      <div className="text-right">
-                        <p className="font-heading tabular-nums">
-                          {formatDuration(entry.duration)}
-                        </p>
-                      </div>
+                      {/* Duration + Actions */}
+                      <div className="flex items-center gap-2 sm:gap-3 ml-auto flex-shrink-0">
+                        <div className="text-right">
+                          <p className="font-heading tabular-nums">
+                            {formatDuration(entry.duration)}
+                          </p>
+                        </div>
 
-                      {/* Edit button */}
-                      {onEditEntry && (
+                        {/* Edit button */}
+                        {onEditEntry && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingEntry(entry)}
+                            aria-label={`Edit time entry: ${entry.description}`}
+                            className="opacity-60 md:opacity-0 md:group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                              aria-hidden="true"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                              />
+                            </svg>
+                          </Button>
+                        )}
+
+                        {/* Delete button */}
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => setEditingEntry(entry)}
-                          aria-label={`Edit time entry: ${entry.description}`}
-                          className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity"
+                          onClick={() => setDeletingId(entry.id)}
+                          aria-label={`Delete time entry: ${entry.description}`}
+                          className="opacity-60 md:opacity-0 md:group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity"
                         >
                           <svg
                             className="w-4 h-4"
@@ -192,35 +218,11 @@ export function TimeEntryList({
                               strokeLinecap="round"
                               strokeLinejoin="round"
                               strokeWidth={2}
-                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                              d="M6 18L18 6M6 6l12 12"
                             />
                           </svg>
                         </Button>
-                      )}
-
-                      {/* Delete button */}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setDeletingId(entry.id)}
-                        aria-label={`Delete time entry: ${entry.description}`}
-                        className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity"
-                      >
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          aria-hidden="true"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
-                      </Button>
+                      </div>
                     </div>
                   )}
                 </motion.div>

@@ -160,9 +160,9 @@ export function EditEntryModal({ entry, categories, tags, isOpen, onClose, onSav
               role="dialog"
               aria-modal="true"
               aria-labelledby="edit-entry-title"
-              className="w-full max-w-md bg-black border border-white/10 rounded-lg p-6"
+              className="w-full max-w-md bg-black border border-white/10 rounded-lg p-4 sm:p-6"
             >
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
                 <h2 id="edit-entry-title" className="text-heading-3 font-heading">Edit Entry</h2>
                 <button
                   onClick={handleClose}
@@ -175,7 +175,7 @@ export function EditEntryModal({ entry, categories, tags, isOpen, onClose, onSav
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
                 <div>
                   <label
                     htmlFor="edit-description"
@@ -251,7 +251,7 @@ export function EditEntryModal({ entry, categories, tags, isOpen, onClose, onSav
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 xs:grid-cols-2 gap-3">
                   <div>
                     <label
                       htmlFor="edit-start-time"
@@ -295,7 +295,7 @@ export function EditEntryModal({ entry, categories, tags, isOpen, onClose, onSav
                   </motion.p>
                 )}
 
-                <div className="flex gap-3 pt-2">
+                <div className="flex flex-col xs:flex-row gap-3 pt-2">
                   <Button
                     type="submit"
                     variant="primary"

@@ -164,7 +164,7 @@ export function Timer({ categories, tags, onTimeEntryComplete }: TimerProps) {
 
   return (
     <Card className="overflow-hidden">
-      <CardContent className="space-y-8">
+      <CardContent className="space-y-6 sm:space-y-8">
         {/* Timer Display */}
         <div className="text-center">
           <motion.div
@@ -193,7 +193,7 @@ export function Timer({ categories, tags, onTimeEntryComplete }: TimerProps) {
         </div>
 
         {/* Category & Description */}
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div>
             <label htmlFor="timer-category" className="text-eyebrow block mb-2">Category</label>
             <Select
@@ -240,7 +240,7 @@ export function Timer({ categories, tags, onTimeEntryComplete }: TimerProps) {
         </div>
 
         {/* Controls */}
-        <div className="flex gap-3 justify-center">
+        <div className="flex gap-2 sm:gap-3 justify-center flex-wrap">
           {!isRunning && elapsedSeconds === 0 && (
             <Button onClick={handleStart} variant="primary" size="lg">
               Start

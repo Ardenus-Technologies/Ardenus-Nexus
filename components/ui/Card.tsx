@@ -38,7 +38,7 @@ const CardHeader = forwardRef<HTMLDivElement, CardHeaderProps>(
     return (
       <div
         ref={ref}
-        className={cn("px-6 py-4 border-b border-white/10", className)}
+        className={cn("px-4 py-3 sm:px-6 sm:py-4 border-b border-white/10", className)}
         {...props}
       />
     );
@@ -51,7 +51,7 @@ type CardContentProps = ComponentPropsWithoutRef<"div">;
 
 const CardContent = forwardRef<HTMLDivElement, CardContentProps>(
   ({ className, ...props }, ref) => {
-    return <div ref={ref} className={cn("p-6", className)} {...props} />;
+    return <div ref={ref} className={cn("p-4 sm:p-6", className)} {...props} />;
   }
 );
 

@@ -79,7 +79,7 @@ export function CategoryManager({
                 onChange={(e) => setNewName(e.target.value)}
                 autoFocus
               />
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <span className="text-eyebrow self-center mr-2">Color</span>
                 {PRESET_COLORS.map((color) => (
                   <button
@@ -161,7 +161,7 @@ export function CategoryManager({
                         size="sm"
                         onClick={() => setDeletingId(category.id)}
                         aria-label={`Delete category ${category.name}`}
-                        className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity"
+                        className="opacity-60 md:opacity-0 md:group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity"
                       >
                         <svg
                           className="w-4 h-4"

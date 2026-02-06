@@ -69,7 +69,7 @@ export function TimeEntryFilters({
       className="mb-6 space-y-4"
     >
       {/* Search bar - always visible */}
-      <div className="flex gap-3">
+      <div className="flex gap-2 sm:gap-3">
         <div className="flex-1 relative">
           <svg
             className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50"
@@ -102,7 +102,7 @@ export function TimeEntryFilters({
           aria-label="Toggle filters"
         >
           <svg
-            className="w-5 h-5 mr-2"
+            className="w-5 h-5 sm:mr-2"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -115,7 +115,7 @@ export function TimeEntryFilters({
               d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
             />
           </svg>
-          Filters
+          <span className="hidden sm:inline">Filters</span>
           {hasActiveFilters && (
             <span className="ml-2 w-2 h-2 rounded-full bg-white" />
           )}
