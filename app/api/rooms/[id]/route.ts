@@ -23,19 +23,20 @@ export async function PUT(
   }
 
   const body = await request.json();
-  const { name, meetLink } = body;
+  const { name, meetLink, requireClockIn } = body;
 
   if (!name || !name.trim()) {
     return NextResponse.json({ error: 'Name is required' }, { status: 400 });
   }
 
-  roomQueries.update.run(name.trim(), meetLink || null, id);
+  roomQueries.update.run(name.trim(), meetLink || null, requireClockIn === false ? 0 : 1, id);
 
   const updated = roomQueries.findById.get(id);
   return NextResponse.json({
     id: updated!.id,
     name: updated!.name,
     meetLink: updated!.meet_link,
+    requireClockIn: Boolean(updated!.require_clock_in),
   });
 }
 

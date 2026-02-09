@@ -158,12 +158,12 @@ export default function TeamPage() {
     }
   }, [fetchRooms]);
 
-  const handleCreateRoom = useCallback(async (name: string, meetLink: string) => {
+  const handleCreateRoom = useCallback(async (name: string, meetLink: string, requireClockIn: boolean) => {
     try {
       const res = await fetch("/api/rooms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, meetLink: meetLink || undefined }),
+        body: JSON.stringify({ name, meetLink: meetLink || undefined, requireClockIn }),
       });
       if (res.ok) {
         await fetchRooms();
@@ -173,12 +173,12 @@ export default function TeamPage() {
     }
   }, [fetchRooms]);
 
-  const handleEditRoom = useCallback(async (id: string, name: string, meetLink: string) => {
+  const handleEditRoom = useCallback(async (id: string, name: string, meetLink: string, requireClockIn: boolean) => {
     try {
       const res = await fetch(`/api/rooms/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, meetLink: meetLink || undefined }),
+        body: JSON.stringify({ name, meetLink: meetLink || undefined, requireClockIn }),
       });
       if (res.ok) {
         await fetchRooms();

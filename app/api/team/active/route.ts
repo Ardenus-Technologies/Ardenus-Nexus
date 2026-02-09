@@ -74,8 +74,8 @@ export async function DELETE() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Auto-leave all rooms on clock out
-  roomParticipantQueries.leaveAll.run(session.user.id);
+  // Auto-leave rooms that require clock-in (stay in rooms that don't)
+  roomParticipantQueries.leaveRequireClockIn.run(session.user.id);
   activeTimerQueries.deleteByUserId.run(session.user.id);
 
   return NextResponse.json({ success: true });

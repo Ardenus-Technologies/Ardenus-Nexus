@@ -14,8 +14,8 @@ interface RoomListProps {
   isClockedIn: boolean;
   onJoin: (roomId: string) => Promise<string | null>;
   onLeave: (roomId: string) => Promise<void>;
-  onCreate: (name: string, meetLink: string) => Promise<void>;
-  onEdit: (id: string, name: string, meetLink: string) => Promise<void>;
+  onCreate: (name: string, meetLink: string, requireClockIn: boolean) => Promise<void>;
+  onEdit: (id: string, name: string, meetLink: string, requireClockIn: boolean) => Promise<void>;
   onDelete: (id: string, confirmation: string) => Promise<void>;
 }
 
@@ -37,6 +37,8 @@ export function RoomList({
   const [newMeetLink, setNewMeetLink] = useState("");
   const [editName, setEditName] = useState("");
   const [editMeetLink, setEditMeetLink] = useState("");
+  const [newRequireClockIn, setNewRequireClockIn] = useState(true);
+  const [editRequireClockIn, setEditRequireClockIn] = useState(true);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -45,9 +47,10 @@ export function RoomList({
     if (newName.trim() && !isSubmitting) {
       setIsSubmitting(true);
       try {
-        await onCreate(newName.trim(), newMeetLink.trim());
+        await onCreate(newName.trim(), newMeetLink.trim(), newRequireClockIn);
         setNewName("");
         setNewMeetLink("");
+        setNewRequireClockIn(true);
         setIsAdding(false);
       } finally {
         setIsSubmitting(false);
@@ -59,6 +62,7 @@ export function RoomList({
     setEditingId(room.id);
     setEditName(room.name);
     setEditMeetLink(room.meetLink || "");
+    setEditRequireClockIn(room.requireClockIn);
     setDeletingId(null);
     setDeleteConfirmation("");
   };
@@ -67,10 +71,11 @@ export function RoomList({
     if (editingId && editName.trim() && !isSubmitting) {
       setIsSubmitting(true);
       try {
-        await onEdit(editingId, editName.trim(), editMeetLink.trim());
+        await onEdit(editingId, editName.trim(), editMeetLink.trim(), editRequireClockIn);
         setEditingId(null);
         setEditName("");
         setEditMeetLink("");
+        setEditRequireClockIn(true);
       } finally {
         setIsSubmitting(false);
       }
@@ -145,6 +150,15 @@ export function RoomList({
                 value={newMeetLink}
                 onChange={(e) => setNewMeetLink(e.target.value)}
               />
+              <label className="flex items-center gap-2 text-sm text-white/70 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={newRequireClockIn}
+                  onChange={(e) => setNewRequireClockIn(e.target.checked)}
+                  className="rounded border-white/20 bg-white/10"
+                />
+                Require clock in to join
+              </label>
               <div className="flex gap-2">
                 <Button onClick={handleAdd} variant="primary" size="sm" isLoading={isSubmitting}>
                   Save
@@ -154,6 +168,7 @@ export function RoomList({
                     setIsAdding(false);
                     setNewName("");
                     setNewMeetLink("");
+                    setNewRequireClockIn(true);
                   }}
                   variant="ghost"
                   size="sm"
@@ -198,6 +213,15 @@ export function RoomList({
                           onChange={(e) => setEditMeetLink(e.target.value)}
                           placeholder="Google Meet link (optional)"
                         />
+                        <label className="flex items-center gap-2 text-sm text-white/70 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={editRequireClockIn}
+                            onChange={(e) => setEditRequireClockIn(e.target.checked)}
+                            className="rounded border-white/20 bg-white/10"
+                          />
+                          Require clock in to join
+                        </label>
                         <div className="flex gap-2">
                           <Button
                             onClick={handleSaveEdit}
@@ -362,10 +386,10 @@ export function RoomList({
                             size="sm"
                             onClick={() => handleJoin(room.id)}
                             className="w-full"
-                            disabled={!isClockedIn}
-                            title={!isClockedIn ? "Clock in to join" : undefined}
+                            disabled={room.requireClockIn && !isClockedIn}
+                            title={room.requireClockIn && !isClockedIn ? "Clock in to join" : undefined}
                           >
-                            {isClockedIn ? "Join" : "Clock in to join"}
+                            {room.requireClockIn && !isClockedIn ? "Clock in to join" : "Join"}
                           </Button>
                         )}
                       </>

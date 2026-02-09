@@ -16,6 +16,7 @@ export async function GET() {
     id: room.id,
     name: room.name,
     meetLink: room.meet_link,
+    requireClockIn: Boolean(room.require_clock_in),
     participants: participants
       .filter((p) => p.room_id === room.id)
       .map((p) => ({
@@ -39,14 +40,14 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { name, meetLink } = body;
+  const { name, meetLink, requireClockIn } = body;
 
   if (!name || !name.trim()) {
     return NextResponse.json({ error: 'Name is required' }, { status: 400 });
   }
 
   const id = generateId();
-  roomQueries.create.run(id, name.trim(), meetLink || null);
+  roomQueries.create.run(id, name.trim(), meetLink || null, requireClockIn === false ? 0 : 1);
 
   const room = roomQueries.findById.get(id);
   return NextResponse.json(
@@ -54,6 +55,7 @@ export async function POST(request: Request) {
       id: room!.id,
       name: room!.name,
       meetLink: room!.meet_link,
+      requireClockIn: Boolean(room!.require_clock_in),
       participants: [],
     } as Room,
     { status: 201 }

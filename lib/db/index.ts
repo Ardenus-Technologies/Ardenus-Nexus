@@ -64,6 +64,16 @@ const migrations = [
     }
   },
   {
+    name: 'add_require_clock_in_to_rooms',
+    check: () => {
+      const columns = db.prepare("PRAGMA table_info(rooms)").all() as { name: string }[];
+      return columns.some(col => col.name === 'require_clock_in');
+    },
+    run: () => {
+      db.exec('ALTER TABLE rooms ADD COLUMN require_clock_in INTEGER NOT NULL DEFAULT 1');
+    }
+  },
+  {
     name: 'create_room_participants_table',
     check: () => {
       const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='room_participants'").all();
@@ -156,6 +166,7 @@ export interface DbRoom {
   id: string;
   name: string;
   meet_link: string | null;
+  require_clock_in: number;
   created_at: string;
 }
 
@@ -293,11 +304,11 @@ export const activeTimerQueries = {
 export const roomQueries = {
   findAll: db.prepare<[], DbRoom>('SELECT * FROM rooms ORDER BY created_at ASC'),
   findById: db.prepare<[string], DbRoom>('SELECT * FROM rooms WHERE id = ?'),
-  create: db.prepare<[string, string, string | null]>(
-    'INSERT INTO rooms (id, name, meet_link) VALUES (?, ?, ?)'
+  create: db.prepare<[string, string, string | null, number]>(
+    'INSERT INTO rooms (id, name, meet_link, require_clock_in) VALUES (?, ?, ?, ?)'
   ),
-  update: db.prepare<[string, string | null, string]>(
-    'UPDATE rooms SET name = ?, meet_link = ? WHERE id = ?'
+  update: db.prepare<[string, string | null, number, string]>(
+    'UPDATE rooms SET name = ?, meet_link = ?, require_clock_in = ? WHERE id = ?'
   ),
   delete: db.prepare<[string]>('DELETE FROM rooms WHERE id = ?'),
 };
@@ -323,6 +334,9 @@ export const roomParticipantQueries = {
   ),
   leaveAll: db.prepare<[string]>(
     'DELETE FROM room_participants WHERE user_id = ?'
+  ),
+  leaveRequireClockIn: db.prepare<[string]>(
+    'DELETE FROM room_participants WHERE user_id = ? AND room_id IN (SELECT id FROM rooms WHERE require_clock_in = 1)'
   ),
 };
 

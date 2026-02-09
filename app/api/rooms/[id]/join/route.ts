@@ -13,15 +13,17 @@ export async function POST(
 
   const { id } = await params;
 
-  // Must be clocked in to join a room
-  const activeTimer = activeTimerQueries.findByUserId.get(session.user.id);
-  if (!activeTimer) {
-    return NextResponse.json({ error: 'You must be clocked in to join a room' }, { status: 403 });
-  }
-
   const room = roomQueries.findById.get(id);
   if (!room) {
     return NextResponse.json({ error: 'Room not found' }, { status: 404 });
+  }
+
+  // Must be clocked in to join rooms that require it
+  if (room.require_clock_in) {
+    const activeTimer = activeTimerQueries.findByUserId.get(session.user.id);
+    if (!activeTimer) {
+      return NextResponse.json({ error: 'You must be clocked in to join a room' }, { status: 403 });
+    }
   }
 
   // Leave all rooms first (one room at a time)

@@ -41,6 +41,7 @@ export interface Room {
   id: string;
   name: string;
   meetLink: string | null;
+  requireClockIn: boolean;
   participants: RoomParticipant[];
 }
 
