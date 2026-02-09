@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Card, CardContent } from "@/components/ui/Card";
 import { formatTime } from "@/lib/utils";
+import { useActivityCheck } from "@/hooks/useActivityCheck";
+import { ActivityCheckModal } from "./ActivityCheckModal";
 import type { Category, Tag, TimeEntry } from "@/types";
 
 interface TimerProps {
@@ -26,6 +28,8 @@ export function Timer({ categories, tags, onTimeEntryComplete }: TimerProps) {
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [isRestoring, setIsRestoring] = useState(true);
   const hasRestoredRef = useRef(false);
+
+  const { showCheckModal, confirmActivity, requestNotificationPermission, resetActivityCheck } = useActivityCheck(isRunning, startTime);
 
   // Restore active timer from database on mount
   useEffect(() => {
@@ -109,7 +113,8 @@ export function Timer({ categories, tags, onTimeEntryComplete }: TimerProps) {
     setIsRunning(true);
     setStartTime(now);
     syncActiveTimer('start', selectedCategoryId, selectedTagId, description, now);
-  }, [selectedCategoryId, selectedTagId, description, syncActiveTimer]);
+    requestNotificationPermission();
+  }, [selectedCategoryId, selectedTagId, description, syncActiveTimer, requestNotificationPermission]);
 
   const handlePause = useCallback(() => {
     setIsRunning(false);
@@ -137,6 +142,7 @@ export function Timer({ categories, tags, onTimeEntryComplete }: TimerProps) {
 
     // Remove from active timers
     syncActiveTimer('stop');
+    resetActivityCheck();
 
     setIsRunning(false);
     setElapsedSeconds(0);
@@ -151,16 +157,18 @@ export function Timer({ categories, tags, onTimeEntryComplete }: TimerProps) {
     description,
     onTimeEntryComplete,
     syncActiveTimer,
+    resetActivityCheck,
   ]);
 
   const handleReset = useCallback(() => {
     // Remove from active timers without saving
     syncActiveTimer('stop');
+    resetActivityCheck();
 
     setIsRunning(false);
     setElapsedSeconds(0);
     setStartTime(null);
-  }, [syncActiveTimer]);
+  }, [syncActiveTimer, resetActivityCheck]);
 
   return (
     <Card className="overflow-hidden">
@@ -273,6 +281,12 @@ export function Timer({ categories, tags, onTimeEntryComplete }: TimerProps) {
           )}
         </div>
       </CardContent>
+
+      <ActivityCheckModal
+        isOpen={showCheckModal}
+        onConfirm={confirmActivity}
+        elapsedSeconds={elapsedSeconds}
+      />
     </Card>
   );
 }
