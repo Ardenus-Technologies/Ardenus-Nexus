@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { roomQueries, roomParticipantQueries, generateId } from '@/lib/db';
+import { roomQueries, roomParticipantQueries, activeTimerQueries, generateId } from '@/lib/db';
 
 export async function POST(
   _request: Request,
@@ -12,6 +12,12 @@ export async function POST(
   }
 
   const { id } = await params;
+
+  // Must be clocked in to join a room
+  const activeTimer = activeTimerQueries.findByUserId.get(session.user.id);
+  if (!activeTimer) {
+    return NextResponse.json({ error: 'You must be clocked in to join a room' }, { status: 403 });
+  }
 
   const room = roomQueries.findById.get(id);
   if (!room) {

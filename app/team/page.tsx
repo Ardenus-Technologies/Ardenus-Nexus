@@ -137,6 +137,10 @@ export default function TeamPage() {
         await fetchRooms();
         return data.meetLink || null;
       }
+      if (res.status === 403) {
+        const data = await res.json();
+        setError(data.error || "You must be clocked in to join a room");
+      }
     } catch {
       setError("Failed to join room");
     }
@@ -384,6 +388,7 @@ export default function TeamPage() {
             rooms={rooms}
             currentUserId={session?.user?.id || ""}
             isAdmin={session?.user?.role === "admin"}
+            isClockedIn={activeTimers.some(t => t.userId === session?.user?.id)}
             onJoin={handleJoinRoom}
             onLeave={handleLeaveRoom}
             onCreate={handleCreateRoom}

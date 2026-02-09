@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { activeTimerQueries, generateId } from '@/lib/db';
+import { activeTimerQueries, roomParticipantQueries, generateId } from '@/lib/db';
 
 // GET - Get all active timers (who's clocked in)
 export async function GET() {
@@ -74,6 +74,8 @@ export async function DELETE() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Auto-leave all rooms on clock out
+  roomParticipantQueries.leaveAll.run(session.user.id);
   activeTimerQueries.deleteByUserId.run(session.user.id);
 
   return NextResponse.json({ success: true });

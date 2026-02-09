@@ -11,6 +11,7 @@ interface RoomListProps {
   rooms: Room[];
   currentUserId: string;
   isAdmin: boolean;
+  isClockedIn: boolean;
   onJoin: (roomId: string) => Promise<string | null>;
   onLeave: (roomId: string) => Promise<void>;
   onCreate: (name: string, meetLink: string) => Promise<void>;
@@ -22,6 +23,7 @@ export function RoomList({
   rooms,
   currentUserId,
   isAdmin,
+  isClockedIn,
   onJoin,
   onLeave,
   onCreate,
@@ -360,8 +362,10 @@ export function RoomList({
                             size="sm"
                             onClick={() => handleJoin(room.id)}
                             className="w-full"
+                            disabled={!isClockedIn}
+                            title={!isClockedIn ? "Clock in to join" : undefined}
                           >
-                            Join
+                            {isClockedIn ? "Join" : "Clock in to join"}
                           </Button>
                         )}
                       </>
