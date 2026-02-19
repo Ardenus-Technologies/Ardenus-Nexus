@@ -24,11 +24,13 @@ const statusStyles: Record<string, string> = {
 
 interface TaskCardProps {
   task: Task;
+  currentUserId: string;
   onClick: () => void;
-  onGrab: (taskId: string) => void;
+  onOptIn: (taskId: string) => void;
+  dragHandleProps?: Record<string, unknown>;
 }
 
-export function TaskCard({ task, onClick, onGrab }: TaskCardProps) {
+export function TaskCard({ task, currentUserId, onClick, onOptIn, dragHandleProps }: TaskCardProps) {
   const doneSubtasks = task.subtasks.filter((s) => s.status === "done").length;
   const totalSubtasks = task.subtasks.length;
 
@@ -36,6 +38,9 @@ export function TaskCard({ task, onClick, onGrab }: TaskCardProps) {
     task.dueDate &&
     task.status !== "done" &&
     new Date(task.dueDate) < new Date();
+
+  const isOptedIn = task.assignees.some((a) => a.id === currentUserId);
+  const showOptIn = !isOptedIn && task.status !== "done";
 
   return (
     <motion.div
@@ -49,6 +54,25 @@ export function TaskCard({ task, onClick, onGrab }: TaskCardProps) {
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
     >
       <div className="flex items-start gap-3">
+        {/* Drag handle */}
+        {dragHandleProps && (
+          <button
+            {...dragHandleProps}
+            className="mt-1 text-white/30 hover:text-white/60 transition-colors cursor-grab active:cursor-grabbing flex-shrink-0"
+            onClick={(e) => e.stopPropagation()}
+            aria-label="Drag to reorder"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <circle cx="5" cy="3" r="1.5" />
+              <circle cx="11" cy="3" r="1.5" />
+              <circle cx="5" cy="8" r="1.5" />
+              <circle cx="11" cy="8" r="1.5" />
+              <circle cx="5" cy="13" r="1.5" />
+              <circle cx="11" cy="13" r="1.5" />
+            </svg>
+          </button>
+        )}
+
         {/* Priority dot */}
         <div className={`w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0 ${priorityColors[task.priority]}`} />
 
@@ -65,8 +89,10 @@ export function TaskCard({ task, onClick, onGrab }: TaskCardProps) {
 
           {/* Meta row */}
           <div className="flex items-center gap-3 text-sm text-white/50 flex-wrap">
-            {task.assigneeName ? (
-              <span className="truncate">{task.assigneeName}</span>
+            {task.assignees.length > 0 ? (
+              <span className="truncate">
+                {task.assignees.map((a) => a.name).join(", ")}
+              </span>
             ) : (
               <span className="text-white/30 italic">Unassigned</span>
             )}
@@ -98,18 +124,18 @@ export function TaskCard({ task, onClick, onGrab }: TaskCardProps) {
           </div>
         </div>
 
-        {/* Grab button for unassigned tasks */}
-        {!task.assigneeId && task.status !== "done" && (
+        {/* Opt In button */}
+        {showOptIn && (
           <Button
             variant="secondary"
             size="sm"
             onClick={(e) => {
               e.stopPropagation();
-              onGrab(task.id);
+              onOptIn(task.id);
             }}
             className="flex-shrink-0 text-xs"
           >
-            Grab
+            Opt In
           </Button>
         )}
       </div>

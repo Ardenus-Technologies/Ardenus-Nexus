@@ -94,6 +94,56 @@ const migrations = [
         CREATE INDEX IF NOT EXISTS idx_room_participants_user_id ON room_participants(user_id);
       `);
     }
+  },
+  {
+    name: 'create_task_assignees_table',
+    check: () => {
+      const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='task_assignees'").all();
+      return tables.length > 0;
+    },
+    run: () => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS task_assignees (
+          task_id TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          assigned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (task_id, user_id),
+          FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_task_assignees_task_id ON task_assignees(task_id);
+        CREATE INDEX IF NOT EXISTS idx_task_assignees_user_id ON task_assignees(user_id);
+      `);
+      // Migrate existing assignee_id data into the join table
+      db.exec(`
+        INSERT OR IGNORE INTO task_assignees (task_id, user_id)
+        SELECT id, assignee_id FROM tasks WHERE assignee_id IS NOT NULL
+      `);
+    }
+  },
+  {
+    name: 'add_position_to_tasks',
+    check: () => {
+      const columns = db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[];
+      return columns.some(col => col.name === 'position');
+    },
+    run: () => {
+      db.exec('ALTER TABLE tasks ADD COLUMN position INTEGER NOT NULL DEFAULT 0');
+      // Initialize positions based on current sort order
+      const tasks = db.prepare(`
+        SELECT id FROM tasks
+        WHERE parent_task_id IS NULL
+        ORDER BY
+          CASE status WHEN 'todo' THEN 0 WHEN 'in_progress' THEN 1 WHEN 'done' THEN 2 END,
+          CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 WHEN 'low' THEN 2 END,
+          created_at DESC
+      `).all() as { id: string }[];
+      const updateStmt = db.prepare('UPDATE tasks SET position = ? WHERE id = ?');
+      for (let i = 0; i < tasks.length; i++) {
+        updateStmt.run(i, tasks[i].id);
+      }
+      db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_position ON tasks(position)');
+    }
   }
 ];
 
@@ -107,6 +157,16 @@ for (const migration of migrations) {
       console.error(`Migration failed: ${migration.name}`, error);
     }
   }
+}
+
+// Create indexes that depend on migrations (safe to re-run)
+const postMigrationIndexes = [
+  'CREATE INDEX IF NOT EXISTS idx_tasks_position ON tasks(position)',
+  'CREATE INDEX IF NOT EXISTS idx_task_assignees_task_id ON task_assignees(task_id)',
+  'CREATE INDEX IF NOT EXISTS idx_task_assignees_user_id ON task_assignees(user_id)',
+];
+for (const sql of postMigrationIndexes) {
+  try { db.exec(sql); } catch { /* column/table may not exist in edge cases */ }
 }
 
 // Types
@@ -210,13 +270,20 @@ export interface DbTask {
   due_date: string | null;
   time_estimate: number | null;
   parent_task_id: string | null;
+  position: number;
   created_at: string;
   updated_at: string;
 }
 
 export interface DbTaskWithUsers extends DbTask {
-  assignee_name: string | null;
   creator_name: string;
+}
+
+export interface DbTaskAssignee {
+  task_id: string;
+  user_id: string;
+  user_name: string;
+  assigned_at: string;
 }
 
 export interface DbTaskComment {
@@ -413,51 +480,72 @@ export const taskQueries = {
   findAll: db.prepare<[], DbTaskWithUsers>(`
     SELECT
       t.*,
-      a.name as assignee_name,
       c.name as creator_name
     FROM tasks t
-    LEFT JOIN users a ON t.assignee_id = a.id
     JOIN users c ON t.created_by = c.id
     WHERE t.parent_task_id IS NULL
-    ORDER BY
-      CASE t.status WHEN 'todo' THEN 0 WHEN 'in_progress' THEN 1 WHEN 'done' THEN 2 END,
-      CASE t.priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 WHEN 'low' THEN 2 END,
-      t.created_at DESC
+    ORDER BY t.position ASC
   `),
   findById: db.prepare<[string], DbTaskWithUsers>(`
     SELECT
       t.*,
-      a.name as assignee_name,
       c.name as creator_name
     FROM tasks t
-    LEFT JOIN users a ON t.assignee_id = a.id
     JOIN users c ON t.created_by = c.id
     WHERE t.id = ?
   `),
   findSubtasks: db.prepare<[string], DbTaskWithUsers>(`
     SELECT
       t.*,
-      a.name as assignee_name,
       c.name as creator_name
     FROM tasks t
-    LEFT JOIN users a ON t.assignee_id = a.id
     JOIN users c ON t.created_by = c.id
     WHERE t.parent_task_id = ?
     ORDER BY t.created_at ASC
   `),
-  create: db.prepare<[string, string, string | null, string, string, string | null, string, string | null, number | null, string | null]>(
-    'INSERT INTO tasks (id, title, description, status, priority, assignee_id, created_by, due_date, time_estimate, parent_task_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  create: db.prepare<[string, string, string | null, string, string, string | null, string, string | null, number | null, string | null, number]>(
+    'INSERT INTO tasks (id, title, description, status, priority, assignee_id, created_by, due_date, time_estimate, parent_task_id, position) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
   ),
-  update: db.prepare<[string, string | null, string, string, string | null, string | null, number | null, string, string]>(
-    'UPDATE tasks SET title = ?, description = ?, status = ?, priority = ?, assignee_id = ?, due_date = ?, time_estimate = ?, updated_at = ? WHERE id = ?'
+  update: db.prepare<[string, string | null, string, string, string | null, number | null, string, string]>(
+    'UPDATE tasks SET title = ?, description = ?, status = ?, priority = ?, due_date = ?, time_estimate = ?, updated_at = ? WHERE id = ?'
   ),
   updateStatus: db.prepare<[string, string, string]>(
     'UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?'
   ),
-  updateAssignee: db.prepare<[string | null, string, string]>(
-    'UPDATE tasks SET assignee_id = ?, updated_at = ? WHERE id = ?'
+  updatePosition: db.prepare<[number, string]>(
+    'UPDATE tasks SET position = ? WHERE id = ?'
+  ),
+  shiftPositions: db.prepare(
+    'UPDATE tasks SET position = position + 1 WHERE parent_task_id IS NULL'
+  ),
+  maxPosition: db.prepare<[], { max_pos: number | null }>(
+    'SELECT MAX(position) as max_pos FROM tasks WHERE parent_task_id IS NULL'
   ),
   delete: db.prepare<[string]>('DELETE FROM tasks WHERE id = ?'),
+};
+
+// Task assignee queries
+export const taskAssigneeQueries = {
+  findByTaskId: db.prepare<[string], DbTaskAssignee>(`
+    SELECT
+      ta.task_id,
+      ta.user_id,
+      u.name as user_name,
+      ta.assigned_at
+    FROM task_assignees ta
+    JOIN users u ON ta.user_id = u.id
+    WHERE ta.task_id = ?
+    ORDER BY ta.assigned_at ASC
+  `),
+  add: db.prepare<[string, string]>(
+    'INSERT OR IGNORE INTO task_assignees (task_id, user_id) VALUES (?, ?)'
+  ),
+  remove: db.prepare<[string, string]>(
+    'DELETE FROM task_assignees WHERE task_id = ? AND user_id = ?'
+  ),
+  isAssigned: db.prepare<[string, string], { count: number }>(
+    'SELECT COUNT(*) as count FROM task_assignees WHERE task_id = ? AND user_id = ?'
+  ),
 };
 
 // Task comment queries

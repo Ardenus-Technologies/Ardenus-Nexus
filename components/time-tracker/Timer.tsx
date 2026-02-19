@@ -29,7 +29,10 @@ export function Timer({ categories, tags, onTimeEntryComplete }: TimerProps) {
   const [isRestoring, setIsRestoring] = useState(true);
   const hasRestoredRef = useRef(false);
 
-  const { showCheckModal, confirmActivity, requestNotificationPermission, resetActivityCheck } = useActivityCheck(isRunning, startTime);
+  // Placeholder — actual callback wired below after syncActiveTimer is defined.
+  // useActivityCheck stores this via a ref, so it always calls the latest version.
+  const handleAutoStopRef = useRef<() => void>(() => {});
+  const { showCheckModal, confirmActivity, requestNotificationPermission, resetActivityCheck, autoStopSecondsLeft } = useActivityCheck(isRunning, startTime, () => handleAutoStopRef.current());
 
   // Restore active timer from database on mount
   useEffect(() => {
@@ -106,6 +109,28 @@ export function Timer({ categories, tags, onTimeEntryComplete }: TimerProps) {
       console.error('Failed to sync active timer:', error);
     }
   }, []);
+
+  const handleAutoStop = useCallback(() => {
+    if (elapsedSeconds > 0 && startTime) {
+      const entry: Omit<TimeEntry, "id"> = {
+        categoryId: selectedCategoryId,
+        tagId: selectedTagId || null,
+        description: description || "No description",
+        startTime,
+        endTime: new Date(),
+        duration: elapsedSeconds,
+      };
+      onTimeEntryComplete(entry);
+    }
+
+    syncActiveTimer('stop');
+    setIsRunning(false);
+    setElapsedSeconds(0);
+    setStartTime(null);
+    setDescription("");
+    setSelectedTagId("");
+  }, [elapsedSeconds, startTime, selectedCategoryId, selectedTagId, description, onTimeEntryComplete, syncActiveTimer]);
+  handleAutoStopRef.current = handleAutoStop;
 
   const handleStart = useCallback(() => {
     if (!selectedCategoryId) return;
@@ -286,6 +311,7 @@ export function Timer({ categories, tags, onTimeEntryComplete }: TimerProps) {
         isOpen={showCheckModal}
         onConfirm={confirmActivity}
         elapsedSeconds={elapsedSeconds}
+        autoStopSecondsLeft={autoStopSecondsLeft}
       />
     </Card>
   );

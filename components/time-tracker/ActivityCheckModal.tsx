@@ -9,9 +9,10 @@ interface ActivityCheckModalProps {
   isOpen: boolean;
   onConfirm: () => void;
   elapsedSeconds: number;
+  autoStopSecondsLeft: number | null;
 }
 
-export function ActivityCheckModal({ isOpen, onConfirm, elapsedSeconds }: ActivityCheckModalProps) {
+export function ActivityCheckModal({ isOpen, onConfirm, elapsedSeconds, autoStopSecondsLeft }: ActivityCheckModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<Element | null>(null);
 
@@ -114,6 +115,13 @@ export function ActivityCheckModal({ isOpen, onConfirm, elapsedSeconds }: Activi
               >
                 Yes, Still Working
               </Button>
+
+              {autoStopSecondsLeft != null && (
+                <p className="text-white/40 text-xs mt-3">
+                  Timer will auto-stop in{" "}
+                  {Math.floor(autoStopSecondsLeft / 60)}:{String(autoStopSecondsLeft % 60).padStart(2, "0")}
+                </p>
+              )}
             </div>
           </motion.div>
         </>

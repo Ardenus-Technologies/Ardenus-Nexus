@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { taskQueries } from '@/lib/db';
+import { taskQueries, taskAssigneeQueries } from '@/lib/db';
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
@@ -17,22 +17,15 @@ export async function POST(
     return NextResponse.json({ error: 'Task not found' }, { status: 404 });
   }
 
-  if (!task.assignee_id) {
-    return NextResponse.json({ error: 'Task is not assigned' }, { status: 400 });
+  // Admin can remove anyone; regular users can only remove themselves
+  const body = await request.json().catch(() => ({}));
+  const targetUserId: string = (session.user.role === 'admin' && body.userId) ? body.userId : session.user.id;
+
+  if (session.user.role !== 'admin' && targetUserId !== session.user.id) {
+    return NextResponse.json({ error: 'You can only remove yourself' }, { status: 403 });
   }
 
-  // Only the assignee or an admin can unassign
-  if (task.assignee_id !== session.user.id && session.user.role !== 'admin') {
-    return NextResponse.json({ error: 'Only the assignee or an admin can unassign' }, { status: 403 });
-  }
-
-  const now = new Date().toISOString();
-  taskQueries.updateAssignee.run(null, now, id);
-
-  // Reset status to todo if it was in_progress
-  if (task.status === 'in_progress') {
-    taskQueries.updateStatus.run('todo', now, id);
-  }
+  taskAssigneeQueries.remove.run(id, targetUserId);
 
   return NextResponse.json({ success: true });
 }

@@ -51,19 +51,24 @@ export interface RoomParticipant {
   joinedAt: string;
 }
 
+export interface TaskAssignee {
+  id: string;
+  name: string;
+}
+
 export interface Task {
   id: string;
   title: string;
   description: string | null;
   status: 'todo' | 'in_progress' | 'done';
   priority: 'low' | 'medium' | 'high';
-  assigneeId: string | null;
-  assigneeName: string | null;
+  assignees: TaskAssignee[];
   createdBy: string;
   creatorName: string;
   dueDate: string | null;
   timeEstimate: number | null;
   parentTaskId: string | null;
+  position: number;
   subtasks: Task[];
   commentCount: number;
   createdAt: string;

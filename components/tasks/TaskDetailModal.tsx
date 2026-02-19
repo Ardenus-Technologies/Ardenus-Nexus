@@ -71,14 +71,28 @@ export function TaskDetailModal({
     onTaskUpdated();
   };
 
-  const handleAssign = async () => {
+  const handleOptIn = async () => {
     await fetch(`/api/tasks/${taskId}/assign`, { method: "POST" });
     await fetchTask();
     onTaskUpdated();
   };
 
-  const handleUnassign = async () => {
-    await fetch(`/api/tasks/${taskId}/unassign`, { method: "POST" });
+  const handleLeave = async () => {
+    await fetch(`/api/tasks/${taskId}/unassign`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    await fetchTask();
+    onTaskUpdated();
+  };
+
+  const handleRemoveAssignee = async (userId: string) => {
+    await fetch(`/api/tasks/${taskId}/unassign`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId }),
+    });
     await fetchTask();
     onTaskUpdated();
   };
@@ -130,7 +144,7 @@ export function TaskDetailModal({
     await fetchTask();
   };
 
-  const isAssignee = task?.assigneeId === currentUserId;
+  const isAssignee = task?.assignees.some((a) => a.id === currentUserId) ?? false;
 
   return (
     <AnimatePresence>
@@ -198,8 +212,32 @@ export function TaskDetailModal({
               {/* Meta info */}
               <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
                 <div>
-                  <span className="text-white/40 block mb-1">Assignee</span>
-                  <span className="text-white">{task.assigneeName || "Unassigned"}</span>
+                  <span className="text-white/40 block mb-1">Assignees</span>
+                  {task.assignees.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {task.assignees.map((a) => (
+                        <span
+                          key={a.id}
+                          className="inline-flex items-center gap-1.5 px-2 py-1 bg-white/5 border border-white/10 rounded-md text-white text-xs"
+                        >
+                          {a.name}
+                          {isAdmin && (
+                            <button
+                              onClick={() => handleRemoveAssignee(a.id)}
+                              className="text-white/40 hover:text-red-400 transition-colors"
+                              aria-label={`Remove ${a.name}`}
+                            >
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-white/30 italic">Unassigned</span>
+                  )}
                 </div>
                 <div>
                   <span className="text-white/40 block mb-1">Created by</span>
@@ -237,19 +275,19 @@ export function TaskDetailModal({
                   </Select>
                 )}
 
-                {/* Assign / Unassign */}
-                {!task.assigneeId && task.status !== "done" && (
-                  <Button variant="secondary" size="sm" onClick={handleAssign}>
-                    Grab Task
+                {/* Opt In / Leave */}
+                {!isAssignee && task.status !== "done" && (
+                  <Button variant="secondary" size="sm" onClick={handleOptIn}>
+                    Opt In
                   </Button>
                 )}
-                {task.assigneeId && (isAssignee || isAdmin) && task.status !== "done" && (
-                  <Button variant="ghost" size="sm" onClick={handleUnassign}>
-                    Release
+                {isAssignee && task.status !== "done" && (
+                  <Button variant="ghost" size="sm" onClick={handleLeave}>
+                    Leave
                   </Button>
                 )}
 
-                {/* Admin: mark done even if done, or delete */}
+                {/* Admin: reopen */}
                 {isAdmin && task.status === "done" && (
                   <Button variant="ghost" size="sm" onClick={() => handleStatusChange("todo")}>
                     Reopen

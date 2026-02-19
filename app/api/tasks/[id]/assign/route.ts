@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { taskQueries } from '@/lib/db';
+import { taskQueries, taskAssigneeQueries } from '@/lib/db';
 
 export async function POST(
   _request: Request,
@@ -17,12 +17,8 @@ export async function POST(
     return NextResponse.json({ error: 'Task not found' }, { status: 404 });
   }
 
-  if (task.assignee_id) {
-    return NextResponse.json({ error: 'Task is already assigned' }, { status: 400 });
-  }
-
-  const now = new Date().toISOString();
-  taskQueries.updateAssignee.run(session.user.id, now, id);
+  // Anyone can opt in — INSERT OR IGNORE handles duplicates
+  taskAssigneeQueries.add.run(id, session.user.id);
 
   return NextResponse.json({ success: true });
 }

@@ -18,7 +18,7 @@ interface CreateTaskModalProps {
     title: string;
     description: string;
     priority: string;
-    assigneeId: string;
+    assigneeIds: string[];
     dueDate: string;
     timeEstimate: string;
   }) => Promise<void>;
@@ -28,11 +28,17 @@ export function CreateTaskModal({ users, onClose, onSubmit }: CreateTaskModalPro
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("medium");
-  const [assigneeId, setAssigneeId] = useState("");
+  const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [dueDate, setDueDate] = useState("");
   const [timeEstimate, setTimeEstimate] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  const toggleAssignee = (userId: string) => {
+    setAssigneeIds((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+    );
+  };
 
   const handleSubmit = async () => {
     if (!title.trim()) {
@@ -42,7 +48,7 @@ export function CreateTaskModal({ users, onClose, onSubmit }: CreateTaskModalPro
     setIsSubmitting(true);
     setError("");
     try {
-      await onSubmit({ title, description, priority, assigneeId, dueDate, timeEstimate });
+      await onSubmit({ title, description, priority, assigneeIds, dueDate, timeEstimate });
       onClose();
     } catch {
       setError("Failed to create task");
@@ -138,21 +144,29 @@ export function CreateTaskModal({ users, onClose, onSubmit }: CreateTaskModalPro
                 </div>
 
                 <div>
-                  <label htmlFor="task-assignee" className="block text-sm text-white/70 mb-2 uppercase tracking-wider">
-                    Assignee
-                  </label>
-                  <Select
-                    id="task-assignee"
-                    value={assigneeId}
-                    onChange={(e) => setAssigneeId(e.target.value)}
-                  >
-                    <option value="" className="bg-black">Unassigned</option>
-                    {users.map((user) => (
-                      <option key={user.id} value={user.id} className="bg-black">
-                        {user.name}
-                      </option>
-                    ))}
-                  </Select>
+                  <span className="block text-sm text-white/70 mb-2 uppercase tracking-wider">
+                    Assignees
+                  </span>
+                  <div className="space-y-1 max-h-32 overflow-y-auto border border-white/10 rounded-lg p-2">
+                    {users.length === 0 ? (
+                      <span className="text-white/30 text-sm">No users</span>
+                    ) : (
+                      users.map((user) => (
+                        <label
+                          key={user.id}
+                          className="flex items-center gap-2 px-2 py-1 rounded hover:bg-white/5 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={assigneeIds.includes(user.id)}
+                            onChange={() => toggleAssignee(user.id)}
+                            className="accent-white"
+                          />
+                          <span className="text-sm text-white truncate">{user.name}</span>
+                        </label>
+                      ))
+                    )}
+                  </div>
                 </div>
               </div>
 

@@ -95,11 +95,22 @@ CREATE TABLE IF NOT EXISTS tasks (
   due_date TEXT,
   time_estimate INTEGER,
   parent_task_id TEXT,
+  position INTEGER NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (assignee_id) REFERENCES users(id) ON DELETE SET NULL,
   FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (parent_task_id) REFERENCES tasks(id) ON DELETE CASCADE
+);
+
+-- Task assignees (many-to-many: multiple users can opt in to a task)
+CREATE TABLE IF NOT EXISTS task_assignees (
+  task_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  assigned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (task_id, user_id),
+  FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- Task comments
