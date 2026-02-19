@@ -128,10 +128,7 @@ export default function TasksPage() {
   const handleCreateTask = useCallback(async (data: {
     title: string;
     description: string;
-    priority: string;
     assigneeIds: string[];
-    dueDate: string;
-    timeEstimate: string;
   }) => {
     const res = await fetch("/api/tasks", {
       method: "POST",
@@ -139,10 +136,7 @@ export default function TasksPage() {
       body: JSON.stringify({
         title: data.title,
         description: data.description || undefined,
-        priority: data.priority,
         assigneeIds: data.assigneeIds.length > 0 ? data.assigneeIds : undefined,
-        dueDate: data.dueDate || undefined,
-        timeEstimate: data.timeEstimate ? Number(data.timeEstimate) : undefined,
       }),
     });
     if (!res.ok) {
@@ -264,6 +258,7 @@ export default function TasksPage() {
             taskId={selectedTaskId}
             currentUserId={currentUserId}
             isAdmin={isAdmin}
+            users={users}
             onClose={() => setSelectedTaskId(null)}
             onTaskUpdated={fetchTasks}
           />

@@ -4,7 +4,6 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
 
 interface User {
   id: string;
@@ -17,20 +16,14 @@ interface CreateTaskModalProps {
   onSubmit: (data: {
     title: string;
     description: string;
-    priority: string;
     assigneeIds: string[];
-    dueDate: string;
-    timeEstimate: string;
   }) => Promise<void>;
 }
 
 export function CreateTaskModal({ users, onClose, onSubmit }: CreateTaskModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [priority, setPriority] = useState("medium");
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
-  const [dueDate, setDueDate] = useState("");
-  const [timeEstimate, setTimeEstimate] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -48,7 +41,7 @@ export function CreateTaskModal({ users, onClose, onSubmit }: CreateTaskModalPro
     setIsSubmitting(true);
     setError("");
     try {
-      await onSubmit({ title, description, priority, assigneeIds, dueDate, timeEstimate });
+      await onSubmit({ title, description, assigneeIds });
       onClose();
     } catch {
       setError("Failed to create task");
@@ -127,75 +120,29 @@ export function CreateTaskModal({ users, onClose, onSubmit }: CreateTaskModalPro
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="task-priority" className="block text-sm text-white/70 mb-2 uppercase tracking-wider">
-                    Priority
-                  </label>
-                  <Select
-                    id="task-priority"
-                    value={priority}
-                    onChange={(e) => setPriority(e.target.value)}
-                  >
-                    <option value="low" className="bg-black">Low</option>
-                    <option value="medium" className="bg-black">Medium</option>
-                    <option value="high" className="bg-black">High</option>
-                  </Select>
-                </div>
-
-                <div>
-                  <span className="block text-sm text-white/70 mb-2 uppercase tracking-wider">
-                    Assignees
-                  </span>
-                  <div className="space-y-1 max-h-32 overflow-y-auto border border-white/10 rounded-lg p-2">
-                    {users.length === 0 ? (
-                      <span className="text-white/30 text-sm">No users</span>
-                    ) : (
-                      users.map((user) => (
-                        <label
-                          key={user.id}
-                          className="flex items-center gap-2 px-2 py-1 rounded hover:bg-white/5 cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={assigneeIds.includes(user.id)}
-                            onChange={() => toggleAssignee(user.id)}
-                            className="accent-white"
-                          />
-                          <span className="text-sm text-white truncate">{user.name}</span>
-                        </label>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="task-due-date" className="block text-sm text-white/70 mb-2 uppercase tracking-wider">
-                    Due Date
-                  </label>
-                  <Input
-                    id="task-due-date"
-                    type="date"
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="task-time-estimate" className="block text-sm text-white/70 mb-2 uppercase tracking-wider">
-                    Time Estimate (hours)
-                  </label>
-                  <Input
-                    id="task-time-estimate"
-                    type="number"
-                    min="0"
-                    step="0.5"
-                    placeholder="e.g. 4"
-                    value={timeEstimate}
-                    onChange={(e) => setTimeEstimate(e.target.value)}
-                  />
+              <div>
+                <span className="block text-sm text-white/70 mb-2 uppercase tracking-wider">
+                  Assignees
+                </span>
+                <div className="space-y-1 max-h-32 overflow-y-auto border border-white/10 rounded-lg p-2">
+                  {users.length === 0 ? (
+                    <span className="text-white/30 text-sm">No users</span>
+                  ) : (
+                    users.map((user) => (
+                      <label
+                        key={user.id}
+                        className="flex items-center gap-2 px-2 py-1 rounded hover:bg-white/5 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={assigneeIds.includes(user.id)}
+                          onChange={() => toggleAssignee(user.id)}
+                          className="accent-white"
+                        />
+                        <span className="text-sm text-white truncate">{user.name}</span>
+                      </label>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
