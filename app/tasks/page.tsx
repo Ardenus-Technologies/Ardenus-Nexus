@@ -61,40 +61,67 @@ export default function TasksPage() {
   }, [status, fetchTasks, fetchUsers]);
 
   const filteredTasks = useMemo(() => {
-    return tasks.filter((task) => {
-      if (filters.search) {
-        const q = filters.search.toLowerCase();
-        if (
-          !task.title.toLowerCase().includes(q) &&
-          !(task.description?.toLowerCase().includes(q))
-        ) {
-          return false;
+    const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+
+    return tasks
+      .filter((task) => {
+        if (filters.search) {
+          const q = filters.search.toLowerCase();
+          if (
+            !task.title.toLowerCase().includes(q) &&
+            !(task.description?.toLowerCase().includes(q))
+          ) {
+            return false;
+          }
         }
-      }
-      if (filters.status && task.status !== filters.status) return false;
-      if (filters.priority && task.priority !== filters.priority) return false;
-      if (filters.assigneeId) {
-        if (filters.assigneeId === "unassigned") {
-          if (task.assigneeId) return false;
-        } else if (task.assigneeId !== filters.assigneeId) {
-          return false;
+        if (filters.status && task.status !== filters.status) return false;
+        if (filters.assigneeId) {
+          if (filters.assigneeId === "unassigned") {
+            if (task.assignees.length > 0) return false;
+          } else if (!task.assignees.some((a) => a.id === filters.assigneeId)) {
+            return false;
+          }
         }
-      }
-      return true;
-    });
+        return true;
+      })
+      .sort((a, b) => (priorityOrder[a.priority] ?? 3) - (priorityOrder[b.priority] ?? 3));
   }, [tasks, filters]);
 
-  const handleGrab = useCallback(async (taskId: string) => {
+  const handleOptIn = useCallback(async (taskId: string) => {
     try {
       const res = await fetch(`/api/tasks/${taskId}/assign`, { method: "POST" });
       if (res.ok) {
         await fetchTasks();
       } else {
         const data = await res.json();
-        setError(data.error || "Failed to grab task");
+        setError(data.error || "Failed to opt in");
       }
     } catch {
-      setError("Failed to grab task");
+      setError("Failed to opt in");
+    }
+  }, [fetchTasks]);
+
+  const handleReorder = useCallback(async (taskIds: string[]) => {
+    // Optimistic update
+    setTasks((prev) => {
+      const taskMap = new Map(prev.map((t) => [t.id, t]));
+      return taskIds.map((id) => taskMap.get(id)).filter((t): t is Task => !!t);
+    });
+
+    try {
+      const res = await fetch("/api/tasks/reorder", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskIds }),
+      });
+      if (!res.ok) {
+        // Revert on failure
+        await fetchTasks();
+        setError("Failed to reorder tasks");
+      }
+    } catch {
+      await fetchTasks();
+      setError("Failed to reorder tasks");
     }
   }, [fetchTasks]);
 
@@ -102,7 +129,7 @@ export default function TasksPage() {
     title: string;
     description: string;
     priority: string;
-    assigneeId: string;
+    assigneeIds: string[];
     dueDate: string;
     timeEstimate: string;
   }) => {
@@ -113,7 +140,7 @@ export default function TasksPage() {
         title: data.title,
         description: data.description || undefined,
         priority: data.priority,
-        assigneeId: data.assigneeId || undefined,
+        assigneeIds: data.assigneeIds.length > 0 ? data.assigneeIds : undefined,
         dueDate: data.dueDate || undefined,
         timeEstimate: data.timeEstimate ? Number(data.timeEstimate) : undefined,
       }),
@@ -140,6 +167,9 @@ export default function TasksPage() {
     );
   }
 
+  const isAdmin = session?.user?.role === "admin";
+  const currentUserId = session?.user?.id || "";
+
   return (
     <main id="main-content" className="min-h-screen container-margins section-py-lg">
       <div className="max-w-[1200px] mx-auto">
@@ -154,7 +184,7 @@ export default function TasksPage() {
             <p className="text-eyebrow mb-2">Tasks</p>
             <h1 className="text-display-3 font-heading">Task Board</h1>
           </div>
-          {session?.user?.role === "admin" && (
+          {isAdmin && (
             <Button
               variant="primary"
               size="sm"
@@ -220,8 +250,11 @@ export default function TasksPage() {
         >
           <TaskList
             tasks={filteredTasks}
+            currentUserId={currentUserId}
+            isAdmin={isAdmin}
             onTaskClick={setSelectedTaskId}
-            onGrab={handleGrab}
+            onOptIn={handleOptIn}
+            onReorder={handleReorder}
           />
         </motion.div>
 
@@ -229,8 +262,8 @@ export default function TasksPage() {
         {selectedTaskId && (
           <TaskDetailModal
             taskId={selectedTaskId}
-            currentUserId={session?.user?.id || ""}
-            isAdmin={session?.user?.role === "admin"}
+            currentUserId={currentUserId}
+            isAdmin={isAdmin}
             onClose={() => setSelectedTaskId(null)}
             onTaskUpdated={fetchTasks}
           />

@@ -11,14 +11,12 @@ interface User {
 export interface TaskFilterState {
   search: string;
   status: string;
-  priority: string;
   assigneeId: string;
 }
 
 export const defaultTaskFilters: TaskFilterState = {
   search: "",
   status: "",
-  priority: "",
   assigneeId: "",
 };
 
@@ -34,7 +32,7 @@ export function TaskFilters({ filters, onFiltersChange, users }: TaskFiltersProp
   };
 
   return (
-    <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       <div className="relative">
         <svg
           className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50"
@@ -69,17 +67,6 @@ export function TaskFilters({ filters, onFiltersChange, users }: TaskFiltersProp
         <option value="todo" className="bg-black">To Do</option>
         <option value="in_progress" className="bg-black">In Progress</option>
         <option value="done" className="bg-black">Done</option>
-      </Select>
-
-      <Select
-        value={filters.priority}
-        onChange={(e) => updateFilter("priority", e.target.value)}
-        aria-label="Filter by priority"
-      >
-        <option value="">All Priorities</option>
-        <option value="high" className="bg-black">High</option>
-        <option value="medium" className="bg-black">Medium</option>
-        <option value="low" className="bg-black">Low</option>
       </Select>
 
       <Select
