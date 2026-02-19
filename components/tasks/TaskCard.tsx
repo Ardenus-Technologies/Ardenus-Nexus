@@ -122,6 +122,37 @@ export function TaskCard({ task, currentUserId, onClick, onOptIn, dragHandleProp
               <span>{task.timeEstimate}h est.</span>
             )}
           </div>
+
+          {/* Inline subtasks */}
+          {totalSubtasks > 0 && (
+            <div className="mt-2 space-y-1 border-t border-white/5 pt-2">
+              {task.subtasks.map((subtask) => (
+                <div key={subtask.id} className="flex items-center gap-2 text-sm">
+                  <div
+                    className={`w-3.5 h-3.5 rounded border flex-shrink-0 flex items-center justify-center ${
+                      subtask.status === "done"
+                        ? "bg-green-500/30 border-green-500/50"
+                        : subtask.status === "in_progress"
+                          ? "bg-yellow-500/20 border-yellow-500/40"
+                          : "border-white/20"
+                    }`}
+                  >
+                    {subtask.status === "done" && (
+                      <svg className="w-2.5 h-2.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                    {subtask.status === "in_progress" && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
+                    )}
+                  </div>
+                  <span className={`truncate ${subtask.status === "done" ? "line-through text-white/30" : "text-white/60"}`}>
+                    {subtask.title}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Opt In button */}

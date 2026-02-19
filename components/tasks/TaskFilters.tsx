@@ -16,7 +16,7 @@ export interface TaskFilterState {
 
 export const defaultTaskFilters: TaskFilterState = {
   search: "",
-  status: "",
+  status: "todo",
   assigneeId: "",
 };
 
@@ -63,7 +63,6 @@ export function TaskFilters({ filters, onFiltersChange, users }: TaskFiltersProp
         onChange={(e) => updateFilter("status", e.target.value)}
         aria-label="Filter by status"
       >
-        <option value="">All Statuses</option>
         <option value="todo" className="bg-black">To Do</option>
         <option value="in_progress" className="bg-black">In Progress</option>
         <option value="done" className="bg-black">Done</option>
