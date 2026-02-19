@@ -51,9 +51,32 @@ export interface RoomParticipant {
   joinedAt: string;
 }
 
-export const DEFAULT_CATEGORIES: Category[] = [
-  { id: "1", name: "Development", color: "#ffffff" },
-  { id: "2", name: "Meetings", color: "#a0a0a0" },
-  { id: "3", name: "Research", color: "#737373" },
-  { id: "4", name: "Admin", color: "#525252" },
-];
+export interface Task {
+  id: string;
+  title: string;
+  description: string | null;
+  status: 'todo' | 'in_progress' | 'done';
+  priority: 'low' | 'medium' | 'high';
+  assigneeId: string | null;
+  assigneeName: string | null;
+  createdBy: string;
+  creatorName: string;
+  dueDate: string | null;
+  timeEstimate: number | null;
+  parentTaskId: string | null;
+  subtasks: Task[];
+  commentCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TaskComment {
+  id: string;
+  taskId: string;
+  userId: string;
+  userName: string;
+  content: string;
+  createdAt: string;
+}
+
+export const DEFAULT_CATEGORIES: Category[] = [];

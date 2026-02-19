@@ -83,6 +83,36 @@ CREATE TABLE IF NOT EXISTS room_participants (
   UNIQUE(room_id, user_id)
 );
 
+-- Tasks table (subtasks are tasks with non-null parent_task_id)
+CREATE TABLE IF NOT EXISTS tasks (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
+  status TEXT NOT NULL DEFAULT 'todo' CHECK (status IN ('todo', 'in_progress', 'done')),
+  priority TEXT NOT NULL DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high')),
+  assignee_id TEXT,
+  created_by TEXT NOT NULL,
+  due_date TEXT,
+  time_estimate INTEGER,
+  parent_task_id TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (assignee_id) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (parent_task_id) REFERENCES tasks(id) ON DELETE CASCADE
+);
+
+-- Task comments
+CREATE TABLE IF NOT EXISTS task_comments (
+  id TEXT PRIMARY KEY,
+  task_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  content TEXT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_time_entries_user_id ON time_entries(user_id);
 CREATE INDEX IF NOT EXISTS idx_time_entries_category_id ON time_entries(category_id);
@@ -92,13 +122,11 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_active_timers_user_id ON active_timers(user_id);
 CREATE INDEX IF NOT EXISTS idx_room_participants_room_id ON room_participants(room_id);
 CREATE INDEX IF NOT EXISTS idx_room_participants_user_id ON room_participants(user_id);
-
--- Insert default categories
-INSERT OR IGNORE INTO categories (id, name, color) VALUES
-  ('1', 'Development', '#ffffff'),
-  ('2', 'Meetings', '#a0a0a0'),
-  ('3', 'Research', '#737373'),
-  ('4', 'Admin', '#525252');
+CREATE INDEX IF NOT EXISTS idx_tasks_assignee_id ON tasks(assignee_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+CREATE INDEX IF NOT EXISTS idx_tasks_parent_task_id ON tasks(parent_task_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_created_by ON tasks(created_by);
+CREATE INDEX IF NOT EXISTS idx_task_comments_task_id ON task_comments(task_id);
 
 -- Insert default rooms
 INSERT OR IGNORE INTO rooms (id, name, meet_link) VALUES

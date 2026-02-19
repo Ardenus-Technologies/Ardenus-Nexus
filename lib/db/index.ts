@@ -199,6 +199,38 @@ export interface DbTimeEntryWithUser extends DbTimeEntry {
   tag_color: string | null;
 }
 
+export interface DbTask {
+  id: string;
+  title: string;
+  description: string | null;
+  status: 'todo' | 'in_progress' | 'done';
+  priority: 'low' | 'medium' | 'high';
+  assignee_id: string | null;
+  created_by: string;
+  due_date: string | null;
+  time_estimate: number | null;
+  parent_task_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbTaskWithUsers extends DbTask {
+  assignee_name: string | null;
+  creator_name: string;
+}
+
+export interface DbTaskComment {
+  id: string;
+  task_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+}
+
+export interface DbTaskCommentWithUser extends DbTaskComment {
+  user_name: string;
+}
+
 // User queries
 export const userQueries = {
   findByEmail: db.prepare<[string], DbUser>('SELECT * FROM users WHERE email = ?'),
@@ -374,6 +406,81 @@ export const teamQueries = {
     WHERE te.start_time >= ? AND te.start_time < ?
     ORDER BY te.start_time DESC
   `),
+};
+
+// Task queries
+export const taskQueries = {
+  findAll: db.prepare<[], DbTaskWithUsers>(`
+    SELECT
+      t.*,
+      a.name as assignee_name,
+      c.name as creator_name
+    FROM tasks t
+    LEFT JOIN users a ON t.assignee_id = a.id
+    JOIN users c ON t.created_by = c.id
+    WHERE t.parent_task_id IS NULL
+    ORDER BY
+      CASE t.status WHEN 'todo' THEN 0 WHEN 'in_progress' THEN 1 WHEN 'done' THEN 2 END,
+      CASE t.priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 WHEN 'low' THEN 2 END,
+      t.created_at DESC
+  `),
+  findById: db.prepare<[string], DbTaskWithUsers>(`
+    SELECT
+      t.*,
+      a.name as assignee_name,
+      c.name as creator_name
+    FROM tasks t
+    LEFT JOIN users a ON t.assignee_id = a.id
+    JOIN users c ON t.created_by = c.id
+    WHERE t.id = ?
+  `),
+  findSubtasks: db.prepare<[string], DbTaskWithUsers>(`
+    SELECT
+      t.*,
+      a.name as assignee_name,
+      c.name as creator_name
+    FROM tasks t
+    LEFT JOIN users a ON t.assignee_id = a.id
+    JOIN users c ON t.created_by = c.id
+    WHERE t.parent_task_id = ?
+    ORDER BY t.created_at ASC
+  `),
+  create: db.prepare<[string, string, string | null, string, string, string | null, string, string | null, number | null, string | null]>(
+    'INSERT INTO tasks (id, title, description, status, priority, assignee_id, created_by, due_date, time_estimate, parent_task_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ),
+  update: db.prepare<[string, string | null, string, string, string | null, string | null, number | null, string, string]>(
+    'UPDATE tasks SET title = ?, description = ?, status = ?, priority = ?, assignee_id = ?, due_date = ?, time_estimate = ?, updated_at = ? WHERE id = ?'
+  ),
+  updateStatus: db.prepare<[string, string, string]>(
+    'UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?'
+  ),
+  updateAssignee: db.prepare<[string | null, string, string]>(
+    'UPDATE tasks SET assignee_id = ?, updated_at = ? WHERE id = ?'
+  ),
+  delete: db.prepare<[string]>('DELETE FROM tasks WHERE id = ?'),
+};
+
+// Task comment queries
+export const taskCommentQueries = {
+  findByTaskId: db.prepare<[string], DbTaskCommentWithUser>(`
+    SELECT
+      tc.*,
+      u.name as user_name
+    FROM task_comments tc
+    JOIN users u ON tc.user_id = u.id
+    WHERE tc.task_id = ?
+    ORDER BY tc.created_at ASC
+  `),
+  countByTaskId: db.prepare<[string], { count: number }>(
+    'SELECT COUNT(*) as count FROM task_comments WHERE task_id = ?'
+  ),
+  create: db.prepare<[string, string, string, string]>(
+    'INSERT INTO task_comments (id, task_id, user_id, content) VALUES (?, ?, ?, ?)'
+  ),
+  findById: db.prepare<[string], DbTaskComment>(
+    'SELECT * FROM task_comments WHERE id = ?'
+  ),
+  delete: db.prepare<[string]>('DELETE FROM task_comments WHERE id = ?'),
 };
 
 // Helper functions
