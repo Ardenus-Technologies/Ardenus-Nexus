@@ -170,74 +170,52 @@ export function AdminStatsView({ compact = false }: AdminStatsViewProps) {
           />
         </motion.div>
 
-        <div className={compact ? "grid gap-6 sm:grid-cols-2" : "grid gap-6 sm:grid-cols-2 lg:grid-cols-3"}>
+        <div className="space-y-2">
           {stats.map((user, i) => {
             const userTotal = user.totalSeconds;
             return (
               <motion.div
                 key={user.userId}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 + i * 0.05 }}
+                transition={{ delay: 0.2 + i * 0.03 }}
               >
-                <Card className="h-full">
-                  <CardContent className="space-y-4">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-lg">{user.userName}</p>
-                        {user.userRole === "admin" && (
-                          <span className="text-xs uppercase tracking-wider text-yellow-400">admin</span>
+                <Card hover={false}>
+                  <CardContent className="!py-4">
+                    <div className="flex items-center gap-6 flex-wrap">
+                      <div className="min-w-[200px] flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{user.userName}</p>
+                          {user.userRole === "admin" && (
+                            <span className="text-xs uppercase tracking-wider text-yellow-400">admin</span>
+                          )}
+                        </div>
+                        <p className="text-white/50 text-sm">{user.userEmail}</p>
+                      </div>
+                      <div className="text-right min-w-[100px]">
+                        <p className="text-lg font-heading tabular-nums">{formatDuration(user.totalSeconds)}</p>
+                        <p className="text-white/50 text-xs">
+                          {user.entryCount} {user.entryCount === 1 ? "entry" : "entries"}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-4 flex-wrap">
+                        {user.categories.length > 0 ? (
+                          user.categories.map((cat) => {
+                            const percentage = userTotal > 0 ? Math.round((cat.totalSeconds / userTotal) * 100) : 0;
+                            return (
+                              <div key={cat.categoryId} className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.categoryColor }} />
+                                <span className="text-sm text-white/70">{cat.categoryName}</span>
+                                <span className="text-sm font-heading tabular-nums">{formatDuration(cat.totalSeconds)}</span>
+                                <span className="text-white/40 text-xs">({percentage}%)</span>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <span className="text-white/40 text-sm">No entries</span>
                         )}
                       </div>
-                      <p className="text-white/60 text-sm">{user.userEmail}</p>
                     </div>
-                    <div>
-                      <p className="text-2xl font-heading tabular-nums">{formatDuration(user.totalSeconds)}</p>
-                      <p className="text-white/50 text-sm">
-                        {user.entryCount} {user.entryCount === 1 ? "entry" : "entries"}
-                      </p>
-                    </div>
-                    {user.categories.length > 0 ? (
-                      <div className="space-y-3 pt-2 border-t border-white/10">
-                        {user.categories.map((cat, catIndex) => {
-                          const percentage = userTotal > 0 ? Math.round((cat.totalSeconds / userTotal) * 100) : 0;
-                          return (
-                            <div key={cat.categoryId} className="space-y-1.5">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.categoryColor }} />
-                                  <span className="text-sm">{cat.categoryName}</span>
-                                </div>
-                                <div className="text-right">
-                                  <span className="text-sm font-heading tabular-nums">{formatDuration(cat.totalSeconds)}</span>
-                                  <span className="text-white/60 text-xs ml-2">({percentage}%)</span>
-                                </div>
-                              </div>
-                              <div
-                                className="h-1 bg-white/10 rounded-full overflow-hidden"
-                                role="progressbar"
-                                aria-valuenow={percentage}
-                                aria-valuemin={0}
-                                aria-valuemax={100}
-                                aria-label={`${cat.categoryName}: ${percentage}%`}
-                              >
-                                <motion.div
-                                  className="h-full rounded-full"
-                                  style={{ backgroundColor: cat.categoryColor }}
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${percentage}%` }}
-                                  transition={{ duration: 0.5, delay: catIndex * 0.1 }}
-                                />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="pt-2 border-t border-white/10">
-                        <p className="text-white/50 text-sm">No entries</p>
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
               </motion.div>

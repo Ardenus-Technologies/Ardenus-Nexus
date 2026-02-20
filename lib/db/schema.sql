@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
   name TEXT NOT NULL,
   password_hash TEXT NOT NULL,
   role TEXT DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+  department TEXT NOT NULL DEFAULT 'development' CHECK (department IN ('sales', 'development')),
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -57,6 +58,7 @@ CREATE TABLE IF NOT EXISTS active_timers (
   tag_id TEXT,
   description TEXT,
   start_time DATETIME NOT NULL,
+  last_check_in DATETIME NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE,
@@ -89,6 +91,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   title TEXT NOT NULL,
   description TEXT,
   status TEXT NOT NULL DEFAULT 'todo' CHECK (status IN ('todo', 'done')),
+  department TEXT NOT NULL DEFAULT 'development' CHECK (department IN ('sales', 'development')),
   assignee_id TEXT,
   created_by TEXT NOT NULL,
   due_date TEXT,

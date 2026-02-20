@@ -73,7 +73,23 @@ export function TimeEntryList({
     {} as Record<string, TimeEntry[]>
   );
 
-  const totalDuration = entries.reduce((sum, e) => sum + e.duration, 0);
+  const weekStart = useMemo(() => {
+    const now = new Date();
+    const day = now.getDay();
+    const diff = day === 0 ? 6 : day - 1; // Monday as start of week
+    const start = new Date(now);
+    start.setDate(now.getDate() - diff);
+    start.setHours(0, 0, 0, 0);
+    return start;
+  }, []);
+
+  const weeklyDuration = useMemo(
+    () =>
+      entries
+        .filter((e) => new Date(e.startTime) >= weekStart)
+        .reduce((sum, e) => sum + e.duration, 0),
+    [entries, weekStart]
+  );
 
   if (entries.length === 0) {
     const hasFilters = totalCount !== undefined && totalCount > 0;
@@ -99,16 +115,15 @@ export function TimeEntryList({
     <Card hover={false}>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <h2 className="text-heading-3 font-heading">Time Entries</h2>
           {isFiltered && (
-            <p className="text-white/60 text-sm mt-1">
+            <p className="text-white/60 text-sm">
               Showing {entries.length} of {totalCount}
             </p>
           )}
         </div>
         <div className="text-right">
-          <p className="text-eyebrow">Total</p>
-          <p className="text-xl font-heading">{formatDuration(totalDuration)}</p>
+          <p className="text-eyebrow">This Week</p>
+          <p className="text-xl font-heading">{formatDuration(weeklyDuration)}</p>
         </div>
       </CardHeader>
       <CardContent className="p-0">

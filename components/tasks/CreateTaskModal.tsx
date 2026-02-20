@@ -12,19 +12,23 @@ interface User {
 
 interface CreateTaskModalProps {
   users: User[];
+  defaultDepartment: 'sales' | 'development';
+  isAdmin: boolean;
   onClose: () => void;
   onSubmit: (data: {
     title: string;
     description: string;
     assigneeIds: string[];
     subtaskTitles: string[];
+    department: 'sales' | 'development';
   }) => Promise<void>;
 }
 
-export function CreateTaskModal({ users, onClose, onSubmit }: CreateTaskModalProps) {
+export function CreateTaskModal({ users, defaultDepartment, isAdmin, onClose, onSubmit }: CreateTaskModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
+  const [taskDepartment, setTaskDepartment] = useState<'sales' | 'development'>(defaultDepartment);
   const [subtaskTitles, setSubtaskTitles] = useState<string[]>([]);
   const [newSubtask, setNewSubtask] = useState("");
   const [assigneeSearch, setAssigneeSearch] = useState("");
@@ -61,7 +65,7 @@ export function CreateTaskModal({ users, onClose, onSubmit }: CreateTaskModalPro
     setIsSubmitting(true);
     setError("");
     try {
-      await onSubmit({ title, description, assigneeIds, subtaskTitles });
+      await onSubmit({ title, description, assigneeIds, subtaskTitles, department: taskDepartment });
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create task");
@@ -139,6 +143,38 @@ export function CreateTaskModal({ users, onClose, onSubmit }: CreateTaskModalPro
                   className="w-full bg-transparent border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-[#767676] transition-colors duration-300 outline-none focus-visible:border-white/50 focus-visible:ring-2 focus-visible:ring-white/70 resize-none"
                 />
               </div>
+
+              {isAdmin && (
+                <div>
+                  <span className="block text-sm text-white/70 mb-2 uppercase tracking-wider">
+                    Department
+                  </span>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="task-department"
+                        value="development"
+                        checked={taskDepartment === "development"}
+                        onChange={() => setTaskDepartment("development")}
+                        className="accent-white"
+                      />
+                      <span className="text-sm">Development</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="task-department"
+                        value="sales"
+                        checked={taskDepartment === "sales"}
+                        onChange={() => setTaskDepartment("sales")}
+                        className="accent-white"
+                      />
+                      <span className="text-sm">Sales</span>
+                    </label>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <span className="block text-sm text-white/70 mb-2 uppercase tracking-wider">

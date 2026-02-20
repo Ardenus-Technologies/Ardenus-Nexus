@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { activeTimerQueries, roomParticipantQueries, generateId } from '@/lib/db';
+import { autoStopAllStale } from '@/lib/timer-autostop';
 
 // GET - Get all active timers (who's clocked in)
 export async function GET() {
@@ -8,6 +9,9 @@ export async function GET() {
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  // Server-side enforcement: clean up any stale timers before returning the list
+  autoStopAllStale();
 
   const activeTimers = activeTimerQueries.findAllWithUsers.all();
 
@@ -61,7 +65,8 @@ export async function POST(request: Request) {
     categoryId,
     tagId || null,
     description || null,
-    startTime
+    startTime,
+    startTime, // last_check_in = start time initially
   );
 
   return NextResponse.json({ success: true, id }, { status: 201 });

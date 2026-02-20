@@ -1,8 +1,11 @@
+export type Department = 'sales' | 'development';
+
 export interface User {
   id: string;
   email: string;
   name: string;
   role: 'user' | 'admin';
+  department: Department;
   createdAt?: Date;
 }
 
@@ -61,6 +64,7 @@ export interface Task {
   title: string;
   description: string | null;
   status: 'todo' | 'done';
+  department: Department;
   assignees: TaskAssignee[];
   optedIn: TaskAssignee[];
   createdBy: string;

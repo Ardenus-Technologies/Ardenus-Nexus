@@ -19,11 +19,18 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { email, name, password, role = 'user' } = body;
+  const { email, name, password, role = 'user', department = 'development' } = body;
 
   if (!email || !name || !password) {
     return NextResponse.json(
       { error: 'Email, name, and password are required' },
+      { status: 400 }
+    );
+  }
+
+  if (department !== 'sales' && department !== 'development') {
+    return NextResponse.json(
+      { error: 'Department must be sales or development' },
       { status: 400 }
     );
   }
@@ -40,10 +47,10 @@ export async function POST(request: Request) {
   const id = generateId();
   const passwordHash = await hashPassword(password);
 
-  userQueries.create.run(id, email, name, passwordHash, role);
+  userQueries.create.run(id, email, name, passwordHash, role, department);
 
   return NextResponse.json(
-    { id, email, name, role },
+    { id, email, name, role, department },
     { status: 201 }
   );
 }

@@ -44,6 +44,13 @@ export function Timer({ categories, tags, onTimeEntryComplete }: TimerProps) {
         const res = await fetch('/api/team/active/me');
         if (res.ok) {
           const data = await res.json();
+
+          // Server auto-stopped the timer (stale, no check-in) — nothing to restore
+          if (data?.autoStopped) {
+            resetActivityCheck();
+            return;
+          }
+
           if (data && data.start_time) {
             const savedStartTime = new Date(data.start_time);
             const elapsed = Math.floor((Date.now() - savedStartTime.getTime()) / 1000);
@@ -64,6 +71,7 @@ export function Timer({ categories, tags, onTimeEntryComplete }: TimerProps) {
     };
 
     restoreActiveTimer();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once on mount; resetActivityCheck is stable
   }, []);
 
   // Sync selectedCategoryId when categories load/change
@@ -124,12 +132,13 @@ export function Timer({ categories, tags, onTimeEntryComplete }: TimerProps) {
     }
 
     syncActiveTimer('stop');
+    resetActivityCheck();
     setIsRunning(false);
     setElapsedSeconds(0);
     setStartTime(null);
     setDescription("");
     setSelectedTagId("");
-  }, [elapsedSeconds, startTime, selectedCategoryId, selectedTagId, description, onTimeEntryComplete, syncActiveTimer]);
+  }, [elapsedSeconds, startTime, selectedCategoryId, selectedTagId, description, onTimeEntryComplete, syncActiveTimer, resetActivityCheck]);
   handleAutoStopRef.current = handleAutoStop;
 
   const handleStart = useCallback(() => {

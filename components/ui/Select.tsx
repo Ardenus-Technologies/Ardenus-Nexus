@@ -10,7 +10,7 @@ interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
 const Select = forwardRef<HTMLSelectElement, SelectProps>(
   ({ className, variant = "bordered", children, ...props }, ref) => {
     const baseStyles =
-      "w-full appearance-none bg-transparent text-white cursor-pointer transition-colors duration-300 outline-none pr-8 focus-visible:ring-2 focus-visible:ring-white/70";
+      "w-full appearance-none bg-transparent text-white cursor-pointer transition-colors duration-300 outline-none pr-8 focus-visible:ring-2 focus-visible:ring-white/70 [&>option]:text-black [&>option]:bg-white";
 
     const variants = {
       underline: "border-b border-white/10 py-3 focus-visible:border-white/50",

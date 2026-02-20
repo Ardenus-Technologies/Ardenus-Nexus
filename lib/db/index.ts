@@ -155,6 +155,17 @@ const migrations = [
     }
   },
   {
+    name: 'add_last_check_in_to_active_timers',
+    check: () => {
+      const columns = db.prepare("PRAGMA table_info(active_timers)").all() as { name: string }[];
+      return columns.some(col => col.name === 'last_check_in');
+    },
+    run: () => {
+      db.exec('ALTER TABLE active_timers ADD COLUMN last_check_in DATETIME');
+      db.exec('UPDATE active_timers SET last_check_in = start_time WHERE last_check_in IS NULL');
+    }
+  },
+  {
     name: 'remove_in_progress_status',
     check: () => {
       // If no rows have in_progress, migration is done (or wasn't needed)
@@ -163,6 +174,52 @@ const migrations = [
     },
     run: () => {
       db.exec("UPDATE tasks SET status = 'todo' WHERE status = 'in_progress'");
+    }
+  },
+  {
+    name: 'add_department_to_users',
+    check: () => {
+      const columns = db.prepare("PRAGMA table_info(users)").all() as { name: string }[];
+      return columns.some(col => col.name === 'department');
+    },
+    run: () => {
+      db.exec("ALTER TABLE users ADD COLUMN department TEXT NOT NULL DEFAULT 'development' CHECK (department IN ('sales', 'development'))");
+    }
+  },
+  {
+    name: 'task_assignees_composite_pk_with_type',
+    check: () => {
+      // Check if the PK already includes `type` by looking at the CREATE TABLE sql
+      const row = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='task_assignees'").get() as { sql: string } | undefined;
+      return !!row && row.sql.includes('PRIMARY KEY (task_id, user_id, type)');
+    },
+    run: () => {
+      db.exec(`
+        CREATE TABLE task_assignees_new (
+          task_id TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          assigned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          type TEXT NOT NULL DEFAULT 'assigned',
+          PRIMARY KEY (task_id, user_id, type),
+          FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+        INSERT INTO task_assignees_new (task_id, user_id, assigned_at, type)
+          SELECT task_id, user_id, assigned_at, type FROM task_assignees;
+        DROP TABLE task_assignees;
+        ALTER TABLE task_assignees_new RENAME TO task_assignees;
+      `);
+    }
+  },
+  {
+    name: 'add_department_to_tasks',
+    check: () => {
+      const columns = db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[];
+      return columns.some(col => col.name === 'department');
+    },
+    run: () => {
+      db.exec("ALTER TABLE tasks ADD COLUMN department TEXT NOT NULL DEFAULT 'development' CHECK (department IN ('sales', 'development'))");
+      db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_department ON tasks(department)');
     }
   }
 ];
@@ -184,6 +241,7 @@ const postMigrationIndexes = [
   'CREATE INDEX IF NOT EXISTS idx_tasks_position ON tasks(position)',
   'CREATE INDEX IF NOT EXISTS idx_task_assignees_task_id ON task_assignees(task_id)',
   'CREATE INDEX IF NOT EXISTS idx_task_assignees_user_id ON task_assignees(user_id)',
+  'CREATE INDEX IF NOT EXISTS idx_tasks_department ON tasks(department)',
 ];
 for (const sql of postMigrationIndexes) {
   try { db.exec(sql); } catch { /* column/table may not exist in edge cases */ }
@@ -196,6 +254,7 @@ export interface DbUser {
   name: string;
   password_hash: string;
   role: 'user' | 'admin';
+  department: 'sales' | 'development';
   created_at: string;
 }
 
@@ -239,6 +298,7 @@ export interface DbActiveTimer {
   tag_id: string | null;
   description: string | null;
   start_time: string;
+  last_check_in: string;
   created_at: string;
 }
 
@@ -284,6 +344,7 @@ export interface DbTask {
   title: string;
   description: string | null;
   status: 'todo' | 'done';
+  department: 'sales' | 'development';
   assignee_id: string | null;
   created_by: string;
   due_date: string | null;
@@ -322,15 +383,24 @@ export interface DbTaskCommentWithUser extends DbTaskComment {
 export const userQueries = {
   findByEmail: db.prepare<[string], DbUser>('SELECT * FROM users WHERE email = ?'),
   findById: db.prepare<[string], DbUser>('SELECT * FROM users WHERE id = ?'),
-  findAll: db.prepare<[], DbUser>('SELECT id, email, name, role, created_at FROM users'),
-  create: db.prepare<[string, string, string, string, string]>(
-    'INSERT INTO users (id, email, name, password_hash, role) VALUES (?, ?, ?, ?, ?)'
+  findAll: db.prepare<[], DbUser>('SELECT id, email, name, role, department, created_at FROM users'),
+  create: db.prepare<[string, string, string, string, string, string]>(
+    'INSERT INTO users (id, email, name, password_hash, role, department) VALUES (?, ?, ?, ?, ?, ?)'
   ),
   updatePassword: db.prepare<[string, string]>(
     'UPDATE users SET password_hash = ? WHERE id = ?'
   ),
   updateName: db.prepare<[string, string]>(
     'UPDATE users SET name = ? WHERE id = ?'
+  ),
+  updateEmail: db.prepare<[string, string]>(
+    'UPDATE users SET email = ? WHERE id = ?'
+  ),
+  updateRole: db.prepare<[string, string]>(
+    'UPDATE users SET role = ? WHERE id = ?'
+  ),
+  updateDepartment: db.prepare<[string, string]>(
+    'UPDATE users SET department = ? WHERE id = ?'
   ),
   delete: db.prepare<[string]>('DELETE FROM users WHERE id = ?'),
 };
@@ -410,11 +480,17 @@ export const activeTimerQueries = {
     LEFT JOIN tags t ON at.tag_id = t.id
     ORDER BY at.start_time ASC
   `),
-  create: db.prepare<[string, string, string, string | null, string | null, string]>(
-    'INSERT OR REPLACE INTO active_timers (id, user_id, category_id, tag_id, description, start_time) VALUES (?, ?, ?, ?, ?, ?)'
+  create: db.prepare<[string, string, string, string | null, string | null, string, string]>(
+    'INSERT OR REPLACE INTO active_timers (id, user_id, category_id, tag_id, description, start_time, last_check_in) VALUES (?, ?, ?, ?, ?, ?, ?)'
   ),
   update: db.prepare<[string, string | null, string | null, string]>(
     'UPDATE active_timers SET category_id = ?, tag_id = ?, description = ? WHERE user_id = ?'
+  ),
+  updateCheckIn: db.prepare<[string, string]>(
+    'UPDATE active_timers SET last_check_in = ? WHERE user_id = ?'
+  ),
+  findStale: db.prepare<[string], DbActiveTimer>(
+    'SELECT * FROM active_timers WHERE COALESCE(last_check_in, start_time) < ?'
   ),
   deleteByUserId: db.prepare<[string]>('DELETE FROM active_timers WHERE user_id = ?'),
 };
@@ -523,8 +599,17 @@ export const taskQueries = {
     WHERE t.parent_task_id = ?
     ORDER BY t.created_at ASC
   `),
-  create: db.prepare<[string, string, string | null, string, string | null, string, string | null, number | null, string | null, number]>(
-    'INSERT INTO tasks (id, title, description, status, assignee_id, created_by, due_date, time_estimate, parent_task_id, position) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  findByDepartment: db.prepare<[string], DbTaskWithUsers>(`
+    SELECT
+      t.*,
+      c.name as creator_name
+    FROM tasks t
+    JOIN users c ON t.created_by = c.id
+    WHERE t.parent_task_id IS NULL AND t.department = ?
+    ORDER BY t.position ASC
+  `),
+  create: db.prepare<[string, string, string | null, string, string | null, string, string | null, number | null, string | null, number, string]>(
+    'INSERT INTO tasks (id, title, description, status, assignee_id, created_by, due_date, time_estimate, parent_task_id, position, department) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
   ),
   update: db.prepare<[string, string | null, string, string | null, number | null, string, string]>(
     'UPDATE tasks SET title = ?, description = ?, status = ?, due_date = ?, time_estimate = ?, updated_at = ? WHERE id = ?'
@@ -561,8 +646,11 @@ export const taskAssigneeQueries = {
   add: db.prepare<[string, string, string]>(
     'INSERT OR IGNORE INTO task_assignees (task_id, user_id, type) VALUES (?, ?, ?)'
   ),
+  optIn: db.prepare<[string, string]>(
+    "INSERT OR IGNORE INTO task_assignees (task_id, user_id, type) VALUES (?, ?, 'opted_in')"
+  ),
   remove: db.prepare<[string, string]>(
-    'DELETE FROM task_assignees WHERE task_id = ? AND user_id = ?'
+    "DELETE FROM task_assignees WHERE task_id = ? AND user_id = ? AND type = 'opted_in'"
   ),
   isInTask: db.prepare<[string, string], { count: number }>(
     'SELECT COUNT(*) as count FROM task_assignees WHERE task_id = ? AND user_id = ?'

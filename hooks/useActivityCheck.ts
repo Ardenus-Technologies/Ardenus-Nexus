@@ -53,6 +53,10 @@ export function useActivityCheck(isRunning: boolean, startTime: Date | null, onA
     localStorage.setItem(LS_KEY, String(now));
     setShowCheckModal(false);
     setAutoStopSecondsLeft(null);
+
+    // Sync check-in to server so the server-side enforcement knows
+    // the user is still active (fire-and-forget)
+    fetch('/api/team/active/check-in', { method: 'POST' }).catch(() => {});
   }, []);
 
   const resetActivityCheck = useCallback(() => {

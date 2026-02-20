@@ -33,10 +33,10 @@ export function TaskCard({ task, currentUserId, onClick, onOptIn, onOptOut, onSu
     task.status !== "done" &&
     new Date(task.dueDate) < new Date();
 
-  const isAssigned = task.assignees.some((a) => a.id === currentUserId);
   const isOptedIn = task.optedIn.some((a) => a.id === currentUserId);
-  const showOptIn = !isAssigned && !isOptedIn && task.status !== "done";
-  const showOptOut = !isAssigned && isOptedIn && task.status !== "done";
+  const isAssigned = task.assignees.some((a) => a.id === currentUserId);
+  const showOptIn = !isOptedIn && task.status !== "done";
+  const showOptOut = isOptedIn && task.status !== "done";
 
   return (
     <motion.div
@@ -77,6 +77,13 @@ export function TaskCard({ task, currentUserId, onClick, onOptIn, onOptOut, onSu
             </h3>
             <span className={`px-2 py-0.5 text-xs rounded-full flex-shrink-0 ${statusStyles[task.status]}`}>
               {statusLabels[task.status]}
+            </span>
+            <span className={`px-1.5 py-0.5 text-xs rounded flex-shrink-0 ${
+              task.department === "sales"
+                ? "bg-emerald-500/20 text-emerald-400"
+                : "bg-blue-500/20 text-blue-400"
+            }`}>
+              {task.department === "sales" ? "Sales" : "Dev"}
             </span>
           </div>
 

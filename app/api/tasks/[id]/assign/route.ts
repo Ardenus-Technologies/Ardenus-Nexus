@@ -17,8 +17,13 @@ export async function POST(
     return NextResponse.json({ error: 'Task not found' }, { status: 404 });
   }
 
-  // Anyone can opt in — INSERT OR IGNORE handles duplicates
-  taskAssigneeQueries.add.run(id, session.user.id, 'opted_in');
+  // Non-admins can only opt into tasks from their department
+  if (session.user.role !== 'admin' && task.department !== session.user.department) {
+    return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+  }
+
+  // Anyone can opt in — upsert changes type to 'opted_in' even if already assigned
+  taskAssigneeQueries.optIn.run(id, session.user.id);
 
   return NextResponse.json({ success: true });
 }

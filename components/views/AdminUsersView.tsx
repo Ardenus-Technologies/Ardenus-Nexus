@@ -6,13 +6,15 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button, Input, Card, CardHeader, CardContent } from "@/components/ui";
 import { TagManager } from "@/components/TagManager";
-import type { Tag } from "@/types";
+import { CategoryManager } from "@/components/time-tracker/CategoryManager";
+import { DEFAULT_CATEGORIES, type Category, type Tag } from "@/types";
 
 interface User {
   id: string;
   email: string;
   name: string;
   role: "user" | "admin";
+  department: "sales" | "development";
   created_at: string;
 }
 
@@ -25,6 +27,7 @@ export function AdminUsersView({ compact = false }: AdminUsersViewProps) {
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
+  const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -33,6 +36,7 @@ export function AdminUsersView({ compact = false }: AdminUsersViewProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"user" | "admin">("user");
+  const [department, setDepartment] = useState<"sales" | "development">("development");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [currentPassword, setCurrentPassword] = useState("");
@@ -43,6 +47,13 @@ export function AdminUsersView({ compact = false }: AdminUsersViewProps) {
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [resetPasswordUserId, setResetPasswordUserId] = useState<string | null>(null);
   const [resetPasswordValue, setResetPasswordValue] = useState("");
+
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editRole, setEditRole] = useState<"user" | "admin">("user");
+  const [editDepartment, setEditDepartment] = useState<"sales" | "development">("development");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   useEffect(() => {
     if (session && session.user?.role !== "admin") {
@@ -75,11 +86,23 @@ export function AdminUsersView({ compact = false }: AdminUsersViewProps) {
     }
   }, []);
 
+  const fetchCategories = useCallback(async () => {
+    try {
+      const res = await fetch("/api/categories");
+      if (res.ok) {
+        const data = await res.json();
+        setCategories(data);
+      }
+    } catch {
+      setError("Failed to load categories");
+    }
+  }, []);
+
   useEffect(() => {
-    Promise.all([fetchUsers(), fetchTags()]).finally(() => {
+    Promise.all([fetchUsers(), fetchTags(), fetchCategories()]).finally(() => {
       setIsLoading(false);
     });
-  }, [fetchUsers, fetchTags]);
+  }, [fetchUsers, fetchTags, fetchCategories]);
 
   const handleAddTag = async (tag: Omit<Tag, "id">) => {
     setError("");
@@ -146,6 +169,49 @@ export function AdminUsersView({ compact = false }: AdminUsersViewProps) {
     }
   };
 
+  const handleAddCategory = async (category: Category) => {
+    setError("");
+    try {
+      const res = await fetch("/api/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: category.name, color: category.color }),
+      });
+      if (res.ok) {
+        const newCategory = await res.json();
+        setCategories((prev) => [...prev, newCategory]);
+        setSuccess("Category created successfully");
+        setTimeout(() => setSuccess(""), 3000);
+      } else {
+        const data = await res.json();
+        setError(data.error || "Failed to create category");
+      }
+    } catch {
+      setError("Failed to create category");
+    }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    setError("");
+    if (categories.length <= 1) {
+      setError("Must have at least one category");
+      return;
+    }
+    try {
+      const res = await fetch(`/api/categories/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setCategories((prev) => prev.filter((c) => c.id !== id));
+        setSuccess("Category deleted successfully");
+        setTimeout(() => setSuccess(""), 3000);
+      } else {
+        const data = await res.json();
+        setError(data.error || "Failed to delete category");
+      }
+    } catch {
+      setError("Failed to delete category");
+    }
+  };
+
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -155,7 +221,7 @@ export function AdminUsersView({ compact = false }: AdminUsersViewProps) {
       const res = await fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, role }),
+        body: JSON.stringify({ name, email, password, role, department }),
       });
 
       if (res.ok) {
@@ -163,6 +229,7 @@ export function AdminUsersView({ compact = false }: AdminUsersViewProps) {
         setEmail("");
         setPassword("");
         setRole("user");
+        setDepartment("development");
         fetchUsers();
       } else {
         const data = await res.json();
@@ -216,6 +283,71 @@ export function AdminUsersView({ compact = false }: AdminUsersViewProps) {
       }
     } catch {
       setError("Failed to reset password");
+    }
+  };
+
+  const startEditingUser = (user: User) => {
+    setEditingUserId(user.id);
+    setEditName(user.name);
+    setEditEmail(user.email);
+    setEditRole(user.role);
+    setEditDepartment(user.department);
+    setDeletingUserId(null);
+    setResetPasswordUserId(null);
+  };
+
+  const handleSaveEdit = async (id: string) => {
+    if (!editName.trim() || !editEmail.trim()) {
+      setError("Name and email are required");
+      return;
+    }
+
+    setIsSavingEdit(true);
+    setError("");
+
+    try {
+      const res = await fetch(`/api/users/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: editName, email: editEmail, role: editRole, department: editDepartment }),
+      });
+
+      if (res.ok) {
+        setEditingUserId(null);
+        fetchUsers();
+        setSuccess("User updated successfully");
+        setTimeout(() => setSuccess(""), 3000);
+      } else {
+        const data = await res.json();
+        setError(data.error || "Failed to update user");
+      }
+    } catch {
+      setError("Failed to update user");
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleToggleRole = async (user: User) => {
+    const newRole = user.role === "admin" ? "user" : "admin";
+
+    try {
+      const res = await fetch(`/api/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: newRole }),
+      });
+
+      if (res.ok) {
+        fetchUsers();
+        setSuccess(`${user.name} is now ${newRole === "admin" ? "an admin" : "a user"}`);
+        setTimeout(() => setSuccess(""), 3000);
+      } else {
+        const data = await res.json();
+        setError(data.error || "Failed to update role");
+      }
+    } catch {
+      setError("Failed to update role");
     }
   };
 
@@ -337,16 +469,46 @@ export function AdminUsersView({ compact = false }: AdminUsersViewProps) {
                         <div>
                           <p className="font-medium">{user.name}</p>
                           <p className="text-sm text-white/60">{user.email}</p>
-                          <span
-                            className={`text-xs uppercase tracking-wider ${
-                              user.role === "admin" ? "text-yellow-400" : "text-white/50"
-                            }`}
-                          >
-                            {user.role}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            {user.id !== session?.user.id ? (
+                              <button
+                                onClick={() => handleToggleRole(user)}
+                                className={`text-xs uppercase tracking-wider cursor-pointer hover:opacity-80 transition-opacity ${
+                                  user.role === "admin" ? "text-yellow-400" : "text-white/50"
+                                }`}
+                                title={`Click to make ${user.role === "admin" ? "user" : "admin"}`}
+                              >
+                                {user.role}
+                              </button>
+                            ) : (
+                              <span
+                                className={`text-xs uppercase tracking-wider ${
+                                  user.role === "admin" ? "text-yellow-400" : "text-white/50"
+                                }`}
+                              >
+                                {user.role}
+                              </span>
+                            )}
+                            <span
+                              className={`text-xs px-1.5 py-0.5 rounded ${
+                                user.department === "sales"
+                                  ? "bg-emerald-500/20 text-emerald-400"
+                                  : "bg-blue-500/20 text-blue-400"
+                              }`}
+                            >
+                              {user.department === "sales" ? "Sales" : "Dev"}
+                            </span>
+                          </div>
                         </div>
                         {user.id !== session?.user.id && (
                           <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => startEditingUser(user)}
+                            >
+                              Edit
+                            </Button>
                             <Button
                               variant="ghost"
                               size="sm"
@@ -354,6 +516,7 @@ export function AdminUsersView({ compact = false }: AdminUsersViewProps) {
                                 setResetPasswordUserId(user.id);
                                 setResetPasswordValue("");
                                 setDeletingUserId(null);
+                                setEditingUserId(null);
                               }}
                             >
                               Reset PW
@@ -364,6 +527,7 @@ export function AdminUsersView({ compact = false }: AdminUsersViewProps) {
                               onClick={() => {
                                 setDeletingUserId(user.id);
                                 setResetPasswordUserId(null);
+                                setEditingUserId(null);
                               }}
                               className="text-red-400 hover:text-red-300"
                             >
@@ -372,6 +536,112 @@ export function AdminUsersView({ compact = false }: AdminUsersViewProps) {
                           </div>
                         )}
                       </div>
+
+                      {editingUserId === user.id && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          className="mt-3 pt-3 border-t border-white/10 space-y-3"
+                        >
+                          <div className="grid sm:grid-cols-2 gap-3">
+                            <div>
+                              <label htmlFor={`edit-name-${user.id}`} className="block text-xs text-white/50 mb-1 uppercase tracking-wider">
+                                Name
+                              </label>
+                              <Input
+                                id={`edit-name-${user.id}`}
+                                value={editName}
+                                onChange={(e) => setEditName(e.target.value)}
+                                autoFocus
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor={`edit-email-${user.id}`} className="block text-xs text-white/50 mb-1 uppercase tracking-wider">
+                                Email
+                              </label>
+                              <Input
+                                id={`edit-email-${user.id}`}
+                                type="email"
+                                value={editEmail}
+                                onChange={(e) => setEditEmail(e.target.value)}
+                              />
+                            </div>
+                          </div>
+                          <div className="grid sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs text-white/50 mb-1 uppercase tracking-wider">Role</label>
+                              <div className="flex gap-4">
+                                <label className="flex items-center gap-2 cursor-pointer text-sm">
+                                  <input
+                                    type="radio"
+                                    name={`edit-role-${user.id}`}
+                                    value="user"
+                                    checked={editRole === "user"}
+                                    onChange={() => setEditRole("user")}
+                                    className="accent-white"
+                                  />
+                                  <span>User</span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer text-sm">
+                                  <input
+                                    type="radio"
+                                    name={`edit-role-${user.id}`}
+                                    value="admin"
+                                    checked={editRole === "admin"}
+                                    onChange={() => setEditRole("admin")}
+                                    className="accent-white"
+                                  />
+                                  <span>Admin</span>
+                                </label>
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-xs text-white/50 mb-1 uppercase tracking-wider">Department</label>
+                              <div className="flex gap-4">
+                                <label className="flex items-center gap-2 cursor-pointer text-sm">
+                                  <input
+                                    type="radio"
+                                    name={`edit-dept-${user.id}`}
+                                    value="development"
+                                    checked={editDepartment === "development"}
+                                    onChange={() => setEditDepartment("development")}
+                                    className="accent-white"
+                                  />
+                                  <span>Development</span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer text-sm">
+                                  <input
+                                    type="radio"
+                                    name={`edit-dept-${user.id}`}
+                                    value="sales"
+                                    checked={editDepartment === "sales"}
+                                    onChange={() => setEditDepartment("sales")}
+                                    className="accent-white"
+                                  />
+                                  <span>Sales</span>
+                                </label>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={() => handleSaveEdit(user.id)}
+                              variant="primary"
+                              size="sm"
+                              isLoading={isSavingEdit}
+                            >
+                              Save
+                            </Button>
+                            <Button
+                              onClick={() => setEditingUserId(null)}
+                              variant="ghost"
+                              size="sm"
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </motion.div>
+                      )}
 
                       {deletingUserId === user.id && (
                         <motion.div
@@ -486,6 +756,19 @@ export function AdminUsersView({ compact = false }: AdminUsersViewProps) {
                         </label>
                       </div>
                     </div>
+                    <div>
+                      <label className="block text-sm text-white/70 mb-2 uppercase tracking-wider">Department</label>
+                      <div className="flex gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input type="radio" name="department" value="development" checked={department === "development"} onChange={() => setDepartment("development")} className="accent-white" />
+                          <span>Development</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input type="radio" name="department" value="sales" checked={department === "sales"} onChange={() => setDepartment("sales")} className="accent-white" />
+                          <span>Sales</span>
+                        </label>
+                      </div>
+                    </div>
                     <Button type="submit" variant="primary" isLoading={isSubmitting} className="w-full">
                       Create User
                     </Button>
@@ -557,21 +840,35 @@ export function AdminUsersView({ compact = false }: AdminUsersViewProps) {
           </div>
         </div>
 
-        {/* Tag Management */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="mt-8"
-        >
-          <TagManager
-            tags={tags}
-            onAddTag={handleAddTag}
-            onEditTag={handleEditTag}
-            onDeleteTag={handleDeleteTag}
-            isAdmin={true}
-          />
-        </motion.div>
+        {/* Tag & Category Management */}
+        <div className={compact ? "space-y-6 mt-6" : "grid lg:grid-cols-2 gap-8 mt-8"}>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            <TagManager
+              tags={tags}
+              onAddTag={handleAddTag}
+              onEditTag={handleEditTag}
+              onDeleteTag={handleDeleteTag}
+              isAdmin={true}
+            />
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+          >
+            <CategoryManager
+              categories={categories}
+              onAddCategory={handleAddCategory}
+              onDeleteCategory={handleDeleteCategory}
+              isAdmin={true}
+            />
+          </motion.div>
+        </div>
       </div>
     </main>
   );

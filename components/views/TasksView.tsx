@@ -83,6 +83,7 @@ export function TasksView({ compact = false }: TasksViewProps) {
           return false;
         }
       }
+      if (filters.department && task.department !== filters.department) return false;
       return true;
     });
   }, [tasks, filters]);
@@ -168,6 +169,7 @@ export function TasksView({ compact = false }: TasksViewProps) {
     description: string;
     assigneeIds: string[];
     subtaskTitles: string[];
+    department: 'sales' | 'development';
   }) => {
     const res = await fetch("/api/tasks", {
       method: "POST",
@@ -176,6 +178,7 @@ export function TasksView({ compact = false }: TasksViewProps) {
         title: data.title,
         description: data.description || undefined,
         assigneeIds: data.assigneeIds.length > 0 ? data.assigneeIds : undefined,
+        department: data.department,
       }),
     });
     if (!res.ok) {
@@ -279,7 +282,7 @@ export function TasksView({ compact = false }: TasksViewProps) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          <TaskFilters filters={filters} onFiltersChange={setFilters} users={users} />
+          <TaskFilters filters={filters} onFiltersChange={setFilters} users={users} isAdmin={isAdmin} />
         </motion.div>
 
         <motion.div
@@ -325,6 +328,8 @@ export function TasksView({ compact = false }: TasksViewProps) {
         {isCreateFormOpen && (
           <CreateTaskModal
             users={users}
+            defaultDepartment={(session?.user?.department as 'sales' | 'development') ?? 'development'}
+            isAdmin={isAdmin}
             onClose={() => setIsCreateFormOpen(false)}
             onSubmit={handleCreateTask}
           />

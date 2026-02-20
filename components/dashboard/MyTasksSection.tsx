@@ -162,40 +162,43 @@ export function MyTasksSection({ currentUserId, isAdmin }: MyTasksSectionProps) 
   if (!data) return null;
 
   const { assigned, optedIn } = data;
-  if (assigned.length === 0 && optedIn.length === 0) return null;
 
   return (
     <>
       <div className="space-y-4">
         <h2 className="text-heading-4 font-heading text-white">My Tasks</h2>
 
-        {assigned.length > 0 && (
-          <CollapsibleSection title="Assigned to You" count={assigned.length}>
-            <div className="space-y-2">
-              {assigned.map((task) => (
+        <CollapsibleSection title="Assigned to You" count={assigned.length}>
+          <div className="space-y-2">
+            {assigned.length === 0 ? (
+              <p className="text-xs text-white/30 py-2">No assigned tasks</p>
+            ) : (
+              assigned.map((task) => (
                 <TaskMiniCard
                   key={task.id}
                   task={task}
                   onClick={() => setSelectedTaskId(task.id)}
                 />
-              ))}
-            </div>
-          </CollapsibleSection>
-        )}
+              ))
+            )}
+          </div>
+        </CollapsibleSection>
 
-        {optedIn.length > 0 && (
-          <CollapsibleSection title="Opted In" count={optedIn.length}>
-            <div className="space-y-2">
-              {optedIn.map((task) => (
+        <CollapsibleSection title="Opted In" count={optedIn.length}>
+          <div className="space-y-2">
+            {optedIn.length === 0 ? (
+              <p className="text-xs text-white/30 py-2">No opted-in tasks</p>
+            ) : (
+              optedIn.map((task) => (
                 <TaskMiniCard
                   key={task.id}
                   task={task}
                   onClick={() => setSelectedTaskId(task.id)}
                 />
-              ))}
-            </div>
-          </CollapsibleSection>
-        )}
+              ))
+            )}
+          </div>
+        </CollapsibleSection>
       </div>
 
       {selectedTaskId && (

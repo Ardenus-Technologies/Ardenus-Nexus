@@ -9,6 +9,7 @@ declare module 'next-auth' {
     email: string;
     name: string;
     role: 'user' | 'admin';
+    department: 'sales' | 'development';
   }
 
   interface Session {
@@ -20,6 +21,7 @@ declare module '@auth/core/jwt' {
   interface JWT {
     id: string;
     role: 'user' | 'admin';
+    department: 'sales' | 'development';
   }
 }
 
@@ -54,6 +56,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           email: user.email,
           name: user.name,
           role: user.role,
+          department: user.department,
         };
       },
     }),
@@ -63,6 +66,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        token.department = user.department;
+      }
+      // Backfill department for existing sessions that lack it
+      if (!token.department && token.id) {
+        const dbUser = userQueries.findById.get(token.id as string);
+        token.department = dbUser?.department ?? 'development';
       }
       return token;
     },
@@ -70,6 +79,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (token && session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as 'user' | 'admin';
+        session.user.department = token.department as 'sales' | 'development';
       }
       return session;
     },

@@ -39,8 +39,8 @@ async function seed() {
   // Create admin user
   const id = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
   db.prepare(
-    'INSERT INTO users (id, email, name, password_hash, role) VALUES (?, ?, ?, ?, ?)'
-  ).run(id, adminEmail, adminName, passwordHash, 'admin');
+    'INSERT INTO users (id, email, name, password_hash, role, department) VALUES (?, ?, ?, ?, ?, ?)'
+  ).run(id, adminEmail, adminName, passwordHash, 'admin', 'development');
 
   console.log('');
   console.log('✓ Admin user created successfully!');

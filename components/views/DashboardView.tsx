@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Timer, TimeEntryList, CategoryManager, Summary } from "@/components/time-tracker";
+import { Timer, TimeEntryList, AddEntryModal } from "@/components/time-tracker";
 import { MyTasksSection } from "@/components/dashboard";
 import { DEFAULT_CATEGORIES, type Category, type Tag, type TimeEntry } from "@/types";
 import {
@@ -25,7 +25,8 @@ export function DashboardView({ compact = false }: DashboardViewProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
-  const [showTimeEntries, setShowTimeEntries] = useState(true);
+  const [showTimeEntries, setShowTimeEntries] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -161,52 +162,6 @@ export function DashboardView({ compact = false }: DashboardViewProps) {
     }
   };
 
-  const handleAddCategory = async (category: Category) => {
-    setError(null);
-    try {
-      const res = await fetch("/api/categories", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: category.name, color: category.color }),
-      });
-
-      if (res.ok) {
-        const newCategory = await res.json();
-        setCategories((prev) => [...prev, newCategory]);
-      } else {
-        const data = await res.json();
-        setError(data.error || "Failed to create category");
-      }
-    } catch {
-      setError("Failed to create category");
-    }
-  };
-
-  const handleDeleteCategory = async (id: string) => {
-    setError(null);
-    const hasEntries = entries.some((e) => e.categoryId === id);
-    if (hasEntries) {
-      setError("Cannot delete category with existing time entries");
-      return;
-    }
-    if (categories.length <= 1) {
-      setError("Must have at least one category");
-      return;
-    }
-
-    try {
-      const res = await fetch(`/api/categories/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        setCategories((prev) => prev.filter((c) => c.id !== id));
-      } else {
-        const data = await res.json();
-        setError(data.error || "Failed to delete category");
-      }
-    } catch {
-      setError("Failed to delete category");
-    }
-  };
-
   const filteredEntries = useMemo(() => {
     const entriesForFilter = entries.map((e) => ({
       ...e,
@@ -267,22 +222,22 @@ export function DashboardView({ compact = false }: DashboardViewProps) {
           <h1 className={compact ? "text-heading-3 font-heading" : "text-display-2 font-heading"}>Nexus</h1>
         </motion.div>
 
-        <div className={compact ? "space-y-6" : "grid grid-cols-1 lg:grid-cols-[1fr_minmax(0,350px)] gap-fluid-lg"}>
-          <div className="space-y-8 min-w-0">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-              <Timer categories={categories} tags={tags} onTimeEntryComplete={handleTimeEntryComplete} />
+        <div className={compact ? "space-y-6" : "space-y-8"}>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+            <Timer categories={categories} tags={tags} onTimeEntryComplete={handleTimeEntryComplete} />
+          </motion.div>
+
+          {session?.user && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
+              <MyTasksSection currentUserId={session.user.id} isAdmin={session.user.role === "admin"} />
             </motion.div>
+          )}
 
-            {session?.user && (
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
-                <MyTasksSection currentUserId={session.user.id} isAdmin={session.user.role === "admin"} />
-              </motion.div>
-            )}
-
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+            <div className="flex items-center gap-2 mb-3">
               <button
                 onClick={() => setShowTimeEntries((v) => !v)}
-                className="flex items-center gap-2 w-full text-left mb-3 group"
+                className="flex items-center gap-2 text-left group"
               >
                 <svg
                   className={`w-4 h-4 text-white/40 transition-transform duration-200 ${showTimeEntries ? "rotate-90" : ""}`}
@@ -298,44 +253,35 @@ export function DashboardView({ compact = false }: DashboardViewProps) {
                 </span>
                 <span className="text-xs text-white/30">{entries.length}</span>
               </button>
-              <AnimatePresence>
-                {showTimeEntries && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden space-y-8"
-                  >
-                    <TimeEntryFilters filters={filters} onFiltersChange={setFilters} categories={categories} showUserFilter={false} />
-                    <TimeEntryList
-                      entries={filteredEntries}
-                      categories={categories}
-                      tags={tags}
-                      onDeleteEntry={handleDeleteEntry}
-                      onEditEntry={handleEditEntry}
-                      totalCount={entries.length}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          </div>
-
-          <div className="space-y-8 min-w-0">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-              <CategoryManager
-                categories={categories}
-                onAddCategory={handleAddCategory}
-                onDeleteCategory={handleDeleteCategory}
-                isAdmin={session?.user?.role === "admin"}
-              />
-            </motion.div>
-
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-              <Summary entries={entries} categories={categories} />
-            </motion.div>
-          </div>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="ml-auto text-xs text-white/50 hover:text-white border border-white/10 hover:border-white/30 rounded px-2 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              >
+                + Add Entry
+              </button>
+            </div>
+            <AnimatePresence>
+              {showTimeEntries && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden space-y-8"
+                >
+                  <TimeEntryFilters filters={filters} onFiltersChange={setFilters} categories={categories} showUserFilter={false} />
+                  <TimeEntryList
+                    entries={filteredEntries}
+                    categories={categories}
+                    tags={tags}
+                    onDeleteEntry={handleDeleteEntry}
+                    onEditEntry={handleEditEntry}
+                    totalCount={entries.length}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
         </div>
 
         {!compact && (
@@ -349,6 +295,17 @@ export function DashboardView({ compact = false }: DashboardViewProps) {
           </motion.footer>
         )}
       </div>
+
+      <AddEntryModal
+        categories={categories}
+        tags={tags}
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSave={async (entry) => {
+          await handleTimeEntryComplete(entry);
+          setShowAddModal(false);
+        }}
+      />
     </main>
   );
 }

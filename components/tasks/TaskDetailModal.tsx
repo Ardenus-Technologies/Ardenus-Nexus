@@ -4,8 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { SubtaskList } from "./SubtaskList";
-import { CommentSection } from "./CommentSection";
-import type { Task, TaskComment } from "@/types";
+import type { Task } from "@/types";
 
 const statusLabels: Record<string, string> = {
   todo: "To Do",
@@ -34,7 +33,7 @@ export function TaskDetailModal({
   onClose,
   onTaskUpdated,
 }: TaskDetailModalProps) {
-  const [task, setTask] = useState<(Task & { comments: TaskComment[] }) | null>(null);
+  const [task, setTask] = useState<Task | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Inline editing state
@@ -176,21 +175,6 @@ export function TaskDetailModal({
     await fetch(`/api/tasks/${subtaskId}`, { method: "DELETE" });
     await fetchTask();
     onTaskUpdated();
-  };
-
-  const handleAddComment = async (content: string) => {
-    await fetch(`/api/tasks/${taskId}/comments`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content }),
-    });
-    await fetchTask();
-    onTaskUpdated();
-  };
-
-  const handleDeleteComment = async (commentId: string) => {
-    await fetch(`/api/tasks/${taskId}/comments/${commentId}`, { method: "DELETE" });
-    await fetchTask();
   };
 
   const isAssigned = task?.assignees.some((a) => a.id === currentUserId) ?? false;
@@ -419,6 +403,16 @@ export function TaskDetailModal({
                   </div>
                 </div>
                 <div>
+                  <span className="text-white/40 block mb-1">Department</span>
+                  <span className={`inline-block px-2 py-0.5 text-xs rounded ${
+                    task.department === "sales"
+                      ? "bg-emerald-500/20 text-emerald-400"
+                      : "bg-blue-500/20 text-blue-400"
+                  }`}>
+                    {task.department === "sales" ? "Sales" : "Development"}
+                  </span>
+                </div>
+                <div>
                   <span className="text-white/40 block mb-1">Created by</span>
                   <span className="text-white">{task.creatorName}</span>
                 </div>
@@ -441,7 +435,7 @@ export function TaskDetailModal({
               {/* Actions */}
               <div className="flex flex-wrap gap-2 mb-6 pb-6 border-b border-white/10">
                 {/* Opt In / Leave */}
-                {!isOptedIn && !isAssigned && task.status !== "done" && (
+                {!isOptedIn && task.status !== "done" && (
                   <Button variant="secondary" size="sm" onClick={handleOptIn}>
                     Opt In
                   </Button>
@@ -479,7 +473,7 @@ export function TaskDetailModal({
               </div>
 
               {/* Subtasks */}
-              <div className="mb-6 pb-6 border-b border-white/10">
+              <div>
                 <SubtaskList
                   subtasks={task.subtasks}
                   isAdmin={isAdmin}
@@ -490,14 +484,6 @@ export function TaskDetailModal({
                 />
               </div>
 
-              {/* Comments */}
-              <CommentSection
-                comments={task.comments}
-                currentUserId={currentUserId}
-                isAdmin={isAdmin}
-                onAddComment={handleAddComment}
-                onDeleteComment={handleDeleteComment}
-              />
             </div>
           )}
         </motion.div>

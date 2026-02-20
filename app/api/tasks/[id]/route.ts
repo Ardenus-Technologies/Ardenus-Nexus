@@ -26,6 +26,7 @@ function mapTask(t: DbTaskWithUsers, subtasks: DbTaskWithUsers[]): Task {
     title: t.title,
     description: t.description,
     status: t.status,
+    department: t.department,
     assignees: people.assignees,
     optedIn: people.optedIn,
     createdBy: t.created_by,
@@ -41,6 +42,7 @@ function mapTask(t: DbTaskWithUsers, subtasks: DbTaskWithUsers[]): Task {
         title: s.title,
         description: s.description,
         status: s.status,
+        department: s.department,
         assignees: sp.assignees,
         optedIn: sp.optedIn,
         createdBy: s.created_by,
@@ -73,6 +75,11 @@ export async function GET(
   const { id } = await params;
   const task = taskQueries.findById.get(id);
   if (!task) {
+    return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+  }
+
+  // Non-admins can only access tasks from their department
+  if (session.user.role !== 'admin' && task.department !== session.user.department) {
     return NextResponse.json({ error: 'Task not found' }, { status: 404 });
   }
 

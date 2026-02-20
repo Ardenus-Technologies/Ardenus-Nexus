@@ -26,6 +26,7 @@ function mapTask(t: DbTaskWithUsers, subtasks: DbTaskWithUsers[]): Task {
     title: t.title,
     description: t.description,
     status: t.status,
+    department: t.department,
     assignees: people.assignees,
     optedIn: people.optedIn,
     createdBy: t.created_by,
@@ -41,6 +42,7 @@ function mapTask(t: DbTaskWithUsers, subtasks: DbTaskWithUsers[]): Task {
         title: s.title,
         description: s.description,
         status: s.status,
+        department: s.department,
         assignees: sp.assignees,
         optedIn: sp.optedIn,
         createdBy: s.created_by,
@@ -67,7 +69,11 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const tasks = taskQueries.findAll.all();
+  const isAdmin = session.user.role === 'admin';
+  const tasks = isAdmin
+    ? taskQueries.findAll.all()
+    : taskQueries.findByDepartment.all(session.user.department);
+
   const result: Task[] = tasks.map((t) => {
     const subtasks = taskQueries.findSubtasks.all(t.id);
     return mapTask(t, subtasks);
@@ -93,19 +99,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
-  const { title, description, assigneeIds, dueDate, timeEstimate, parentTaskId } = body as {
+  const { title, description, assigneeIds, dueDate, timeEstimate, parentTaskId, department } = body as {
     title?: string;
     description?: string;
     assigneeIds?: string[];
     dueDate?: string;
     timeEstimate?: string | number;
     parentTaskId?: string;
+    department?: string;
   };
 
   if (!title || !title.trim()) {
     return NextResponse.json({ error: 'Title is required' }, { status: 400 });
   }
 
+  // Determine department: subtasks inherit parent, otherwise use body or session default
+  let taskDepartment = session.user.department;
   if (parentTaskId) {
     const parent = taskQueries.findById.get(parentTaskId);
     if (!parent) {
@@ -114,6 +123,9 @@ export async function POST(request: Request) {
     if (parent.parent_task_id) {
       return NextResponse.json({ error: 'Subtasks cannot be nested more than one level' }, { status: 400 });
     }
+    taskDepartment = parent.department;
+  } else if (department === 'sales' || department === 'development') {
+    taskDepartment = department;
   }
 
   try {
@@ -136,7 +148,8 @@ export async function POST(request: Request) {
       dueDate || null,
       timeEstimate ? Number(timeEstimate) : null,
       parentTaskId || null,
-      position
+      position,
+      taskDepartment
     );
 
     // Insert initial assignees (admin-assigned) into join table

@@ -12,27 +12,30 @@ export interface TaskFilterState {
   search: string;
   status: string;
   assigneeId: string;
+  department: string;
 }
 
 export const defaultTaskFilters: TaskFilterState = {
   search: "",
   status: "todo",
   assigneeId: "",
+  department: "",
 };
 
 interface TaskFiltersProps {
   filters: TaskFilterState;
   onFiltersChange: (filters: TaskFilterState) => void;
   users: User[];
+  isAdmin?: boolean;
 }
 
-export function TaskFilters({ filters, onFiltersChange, users }: TaskFiltersProps) {
+export function TaskFilters({ filters, onFiltersChange, users, isAdmin = false }: TaskFiltersProps) {
   const updateFilter = (key: keyof TaskFilterState, value: string) => {
     onFiltersChange({ ...filters, [key]: value });
   };
 
   return (
-    <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div className={`mb-6 grid gap-3 sm:grid-cols-2 ${isAdmin ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
       <div className="relative">
         <svg
           className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50"
@@ -80,6 +83,18 @@ export function TaskFilters({ filters, onFiltersChange, users }: TaskFiltersProp
           </option>
         ))}
       </Select>
+
+      {isAdmin && (
+        <Select
+          value={filters.department}
+          onChange={(e) => updateFilter("department", e.target.value)}
+          aria-label="Filter by department"
+        >
+          <option value="" className="bg-black">All Departments</option>
+          <option value="sales" className="bg-black">Sales</option>
+          <option value="development" className="bg-black">Development</option>
+        </Select>
+      )}
     </div>
   );
 }

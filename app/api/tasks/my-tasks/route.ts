@@ -20,12 +20,30 @@ const findAssignedToUser = db.prepare<[string], DbTaskWithUsers>(`
   ORDER BY t.position ASC
 `);
 
+const findAssignedToUserByDept = db.prepare<[string, string], DbTaskWithUsers>(`
+  SELECT t.*, c.name as creator_name
+  FROM tasks t
+  JOIN users c ON t.created_by = c.id
+  JOIN task_assignees ta ON ta.task_id = t.id AND ta.user_id = ? AND ta.type = 'assigned'
+  WHERE t.parent_task_id IS NULL AND t.status = 'todo' AND t.department = ?
+  ORDER BY t.position ASC
+`);
+
 const findOptedInByUser = db.prepare<[string], DbTaskWithUsers>(`
   SELECT t.*, c.name as creator_name
   FROM tasks t
   JOIN users c ON t.created_by = c.id
   JOIN task_assignees ta ON ta.task_id = t.id AND ta.user_id = ? AND ta.type = 'opted_in'
   WHERE t.parent_task_id IS NULL AND t.status = 'todo'
+  ORDER BY t.position ASC
+`);
+
+const findOptedInByUserByDept = db.prepare<[string, string], DbTaskWithUsers>(`
+  SELECT t.*, c.name as creator_name
+  FROM tasks t
+  JOIN users c ON t.created_by = c.id
+  JOIN task_assignees ta ON ta.task_id = t.id AND ta.user_id = ? AND ta.type = 'opted_in'
+  WHERE t.parent_task_id IS NULL AND t.status = 'todo' AND t.department = ?
   ORDER BY t.position ASC
 `);
 
@@ -51,6 +69,7 @@ function mapTask(t: DbTaskWithUsers, subtasks: DbTaskWithUsers[]): Task {
     title: t.title,
     description: t.description,
     status: t.status,
+    department: t.department,
     assignees: people.assignees,
     optedIn: people.optedIn,
     createdBy: t.created_by,
@@ -66,6 +85,7 @@ function mapTask(t: DbTaskWithUsers, subtasks: DbTaskWithUsers[]): Task {
         title: s.title,
         description: s.description,
         status: s.status,
+        department: s.department,
         assignees: sp.assignees,
         optedIn: sp.optedIn,
         createdBy: s.created_by,
@@ -93,14 +113,20 @@ export async function GET() {
   }
 
   const userId = session.user.id;
+  const isAdmin = session.user.role === 'admin';
+  const dept = session.user.department;
 
-  const assignedRows = findAssignedToUser.all(userId);
+  const assignedRows = isAdmin
+    ? findAssignedToUser.all(userId)
+    : findAssignedToUserByDept.all(userId, dept);
   const assigned = assignedRows.map((t) => {
     const subtasks = taskQueries.findSubtasks.all(t.id);
     return mapTask(t, subtasks);
   });
 
-  const optedInRows = findOptedInByUser.all(userId);
+  const optedInRows = isAdmin
+    ? findOptedInByUser.all(userId)
+    : findOptedInByUserByDept.all(userId, dept);
   const optedIn = optedInRows.map((t) => {
     const subtasks = taskQueries.findSubtasks.all(t.id);
     return mapTask(t, subtasks);

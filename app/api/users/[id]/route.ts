@@ -62,5 +62,36 @@ export async function PATCH(
     userQueries.updatePassword.run(passwordHash, id);
   }
 
+  // Only admins can update name, email, and role for other users
+  if (session.user.role === 'admin') {
+    if (body.name && typeof body.name === 'string') {
+      userQueries.updateName.run(body.name.trim(), id);
+    }
+
+    if (body.email && typeof body.email === 'string') {
+      const trimmedEmail = body.email.trim().toLowerCase();
+      // Check for duplicate email (but allow keeping same email)
+      if (trimmedEmail !== user.email) {
+        const existing = userQueries.findByEmail.get(trimmedEmail);
+        if (existing) {
+          return NextResponse.json({ error: 'Email already in use' }, { status: 409 });
+        }
+      }
+      userQueries.updateEmail.run(trimmedEmail, id);
+    }
+
+    if (body.role && (body.role === 'user' || body.role === 'admin')) {
+      // Prevent admins from demoting themselves
+      if (id === session.user.id && body.role !== 'admin') {
+        return NextResponse.json({ error: 'Cannot change your own role' }, { status: 400 });
+      }
+      userQueries.updateRole.run(body.role, id);
+    }
+
+    if (body.department && (body.department === 'sales' || body.department === 'development')) {
+      userQueries.updateDepartment.run(body.department, id);
+    }
+  }
+
   return NextResponse.json({ success: true });
 }
