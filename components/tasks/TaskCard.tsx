@@ -34,7 +34,6 @@ export function TaskCard({ task, currentUserId, onClick, onOptIn, onOptOut, onSu
     new Date(task.dueDate) < new Date();
 
   const isOptedIn = task.optedIn.some((a) => a.id === currentUserId);
-  const isAssigned = task.assignees.some((a) => a.id === currentUserId);
   const showOptIn = !isOptedIn && task.status !== "done";
   const showOptOut = isOptedIn && task.status !== "done";
 
