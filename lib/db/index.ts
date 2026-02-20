@@ -134,8 +134,7 @@ const migrations = [
         SELECT id FROM tasks
         WHERE parent_task_id IS NULL
         ORDER BY
-          CASE status WHEN 'todo' THEN 0 WHEN 'in_progress' THEN 1 WHEN 'done' THEN 2 END,
-          CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 WHEN 'low' THEN 2 END,
+          CASE status WHEN 'todo' THEN 0 WHEN 'done' THEN 1 END,
           created_at DESC
       `).all() as { id: string }[];
       const updateStmt = db.prepare('UPDATE tasks SET position = ? WHERE id = ?');
@@ -143,6 +142,27 @@ const migrations = [
         updateStmt.run(i, tasks[i].id);
       }
       db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_position ON tasks(position)');
+    }
+  },
+  {
+    name: 'add_type_to_task_assignees',
+    check: () => {
+      const columns = db.prepare("PRAGMA table_info(task_assignees)").all() as { name: string }[];
+      return columns.some(col => col.name === 'type');
+    },
+    run: () => {
+      db.exec("ALTER TABLE task_assignees ADD COLUMN type TEXT NOT NULL DEFAULT 'assigned'");
+    }
+  },
+  {
+    name: 'remove_in_progress_status',
+    check: () => {
+      // If no rows have in_progress, migration is done (or wasn't needed)
+      const row = db.prepare("SELECT COUNT(*) as count FROM tasks WHERE status = 'in_progress'").get() as { count: number };
+      return row.count === 0;
+    },
+    run: () => {
+      db.exec("UPDATE tasks SET status = 'todo' WHERE status = 'in_progress'");
     }
   }
 ];
@@ -263,8 +283,7 @@ export interface DbTask {
   id: string;
   title: string;
   description: string | null;
-  status: 'todo' | 'in_progress' | 'done';
-  priority: 'low' | 'medium' | 'high';
+  status: 'todo' | 'done';
   assignee_id: string | null;
   created_by: string;
   due_date: string | null;
@@ -283,6 +302,7 @@ export interface DbTaskAssignee {
   task_id: string;
   user_id: string;
   user_name: string;
+  type: 'assigned' | 'opted_in';
   assigned_at: string;
 }
 
@@ -503,11 +523,11 @@ export const taskQueries = {
     WHERE t.parent_task_id = ?
     ORDER BY t.created_at ASC
   `),
-  create: db.prepare<[string, string, string | null, string, string, string | null, string, string | null, number | null, string | null, number]>(
-    'INSERT INTO tasks (id, title, description, status, priority, assignee_id, created_by, due_date, time_estimate, parent_task_id, position) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  create: db.prepare<[string, string, string | null, string, string | null, string, string | null, number | null, string | null, number]>(
+    'INSERT INTO tasks (id, title, description, status, assignee_id, created_by, due_date, time_estimate, parent_task_id, position) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
   ),
-  update: db.prepare<[string, string | null, string, string, string | null, number | null, string, string]>(
-    'UPDATE tasks SET title = ?, description = ?, status = ?, priority = ?, due_date = ?, time_estimate = ?, updated_at = ? WHERE id = ?'
+  update: db.prepare<[string, string | null, string, string | null, number | null, string, string]>(
+    'UPDATE tasks SET title = ?, description = ?, status = ?, due_date = ?, time_estimate = ?, updated_at = ? WHERE id = ?'
   ),
   updateStatus: db.prepare<[string, string, string]>(
     'UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?'
@@ -531,19 +551,20 @@ export const taskAssigneeQueries = {
       ta.task_id,
       ta.user_id,
       u.name as user_name,
+      ta.type,
       ta.assigned_at
     FROM task_assignees ta
     JOIN users u ON ta.user_id = u.id
     WHERE ta.task_id = ?
     ORDER BY ta.assigned_at ASC
   `),
-  add: db.prepare<[string, string]>(
-    'INSERT OR IGNORE INTO task_assignees (task_id, user_id) VALUES (?, ?)'
+  add: db.prepare<[string, string, string]>(
+    'INSERT OR IGNORE INTO task_assignees (task_id, user_id, type) VALUES (?, ?, ?)'
   ),
   remove: db.prepare<[string, string]>(
     'DELETE FROM task_assignees WHERE task_id = ? AND user_id = ?'
   ),
-  isAssigned: db.prepare<[string, string], { count: number }>(
+  isInTask: db.prepare<[string, string], { count: number }>(
     'SELECT COUNT(*) as count FROM task_assignees WHERE task_id = ? AND user_id = ?'
   ),
 };

@@ -60,9 +60,9 @@ export interface Task {
   id: string;
   title: string;
   description: string | null;
-  status: 'todo' | 'in_progress' | 'done';
-  priority: 'low' | 'medium' | 'high';
+  status: 'todo' | 'done';
   assignees: TaskAssignee[];
+  optedIn: TaskAssignee[];
   createdBy: string;
   creatorName: string;
   dueDate: string | null;

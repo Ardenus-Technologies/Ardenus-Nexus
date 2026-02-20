@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Providers } from "@/components/Providers";
 import { Header } from "@/components/Header";
+import { LayoutShell } from "@/components/LayoutShell";
 import "./globals.css";
 
 const nurom = localFont({
@@ -52,7 +53,7 @@ export default function RootLayout({
         </a>
         <Providers>
           <Header />
-          {children}
+          <LayoutShell>{children}</LayoutShell>
         </Providers>
       </body>
     </html>

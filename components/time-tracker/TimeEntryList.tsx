@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { formatDuration, formatDate, formatTimeOfDay } from "@/lib/utils";
 import { EditEntryModal } from "./EditEntryModal";
 import type { Category, Tag, TimeEntry } from "@/types";
+
+const PAGE_SIZE = 20;
 
 interface TimeEntryListProps {
   entries: TimeEntry[];
@@ -27,6 +29,18 @@ export function TimeEntryList({
 }: TimeEntryListProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset to page 1 when entries change (e.g. filters applied)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [entries.length]);
+
+  const totalPages = Math.max(1, Math.ceil(entries.length / PAGE_SIZE));
+  const paginatedEntries = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return entries.slice(start, start + PAGE_SIZE);
+  }, [entries, currentPage]);
 
   const getCategoryName = (categoryId: string): string => {
     return categories.find((c) => c.id === categoryId)?.name || "Unknown";
@@ -46,8 +60,8 @@ export function TimeEntryList({
     setDeletingId(null);
   };
 
-  // Group entries by date
-  const groupedEntries = entries.reduce(
+  // Group paginated entries by date
+  const groupedEntries = paginatedEntries.reduce(
     (groups, entry) => {
       const date = formatDate(new Date(entry.startTime));
       if (!groups[date]) {
@@ -231,6 +245,32 @@ export function TimeEntryList({
           </div>
         ))}
       </CardContent>
+
+      {totalPages > 1 && (
+        <div className="px-4 py-3 sm:px-6 sm:py-4 border-t border-white/10 flex items-center justify-between">
+          <span className="text-white/50 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
 
       {onEditEntry && (
         <EditEntryModal

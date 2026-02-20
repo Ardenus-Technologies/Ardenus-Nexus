@@ -27,14 +27,5 @@ export async function POST(
 
   taskAssigneeQueries.remove.run(id, targetUserId);
 
-  // Revert to "todo" if no assignees remain and task was in_progress
-  if (task.status === 'in_progress') {
-    const remaining = taskAssigneeQueries.findByTaskId.all(id);
-    if (remaining.length === 0) {
-      const now = new Date().toISOString();
-      taskQueries.updateStatus.run('todo', now, id);
-    }
-  }
-
   return NextResponse.json({ success: true });
 }

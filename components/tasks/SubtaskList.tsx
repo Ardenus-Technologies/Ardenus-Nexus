@@ -8,13 +8,11 @@ import type { Task } from "@/types";
 
 const statusLabels: Record<string, string> = {
   todo: "To Do",
-  in_progress: "In Progress",
-  done: "Done",
+  done: "Completed",
 };
 
 const statusStyles: Record<string, string> = {
   todo: "bg-white/10 text-white/70",
-  in_progress: "bg-yellow-500/20 text-yellow-300",
   done: "bg-green-500/20 text-green-300",
 };
 
@@ -51,9 +49,7 @@ export function SubtaskList({
   };
 
   const nextStatus = (current: string): string => {
-    if (current === "todo") return "in_progress";
-    if (current === "in_progress") return "done";
-    return "todo";
+    return current === "todo" ? "done" : "todo";
   };
 
   const doneCount = subtasks.filter((s) => s.status === "done").length;
@@ -89,9 +85,7 @@ export function SubtaskList({
                 className={`w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${
                   subtask.status === "done"
                     ? "bg-green-500/30 border-green-500/50"
-                    : subtask.status === "in_progress"
-                      ? "bg-yellow-500/20 border-yellow-500/40"
-                      : "border-white/20 hover:border-white/40"
+                    : "border-white/20 hover:border-white/40"
                 }`}
                 aria-label={`Toggle subtask status to ${nextStatus(subtask.status)}`}
               >
@@ -99,9 +93,6 @@ export function SubtaskList({
                   <svg className="w-3 h-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                   </svg>
-                )}
-                {subtask.status === "in_progress" && (
-                  <div className="w-2 h-2 rounded-full bg-yellow-400" />
                 )}
               </button>
 

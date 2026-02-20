@@ -17,6 +17,7 @@ interface CreateTaskModalProps {
     title: string;
     description: string;
     assigneeIds: string[];
+    subtaskTitles: string[];
   }) => Promise<void>;
 }
 
@@ -24,8 +25,27 @@ export function CreateTaskModal({ users, onClose, onSubmit }: CreateTaskModalPro
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
+  const [subtaskTitles, setSubtaskTitles] = useState<string[]>([]);
+  const [newSubtask, setNewSubtask] = useState("");
+  const [assigneeSearch, setAssigneeSearch] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  const filteredUsers = users.filter((user) =>
+    user.name.toLowerCase().includes(assigneeSearch.toLowerCase())
+  );
+
+  const addSubtask = () => {
+    const trimmed = newSubtask.trim();
+    if (trimmed) {
+      setSubtaskTitles((prev) => [...prev, trimmed]);
+      setNewSubtask("");
+    }
+  };
+
+  const removeSubtask = (index: number) => {
+    setSubtaskTitles((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const toggleAssignee = (userId: string) => {
     setAssigneeIds((prev) =>
@@ -41,10 +61,10 @@ export function CreateTaskModal({ users, onClose, onSubmit }: CreateTaskModalPro
     setIsSubmitting(true);
     setError("");
     try {
-      await onSubmit({ title, description, assigneeIds });
+      await onSubmit({ title, description, assigneeIds, subtaskTitles });
       onClose();
-    } catch {
-      setError("Failed to create task");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create task");
     } finally {
       setIsSubmitting(false);
     }
@@ -122,13 +142,68 @@ export function CreateTaskModal({ users, onClose, onSubmit }: CreateTaskModalPro
 
               <div>
                 <span className="block text-sm text-white/70 mb-2 uppercase tracking-wider">
-                  Assignees
+                  Subtasks
                 </span>
+                {subtaskTitles.length > 0 && (
+                  <ul className="space-y-1 mb-2">
+                    {subtaskTitles.map((st, i) => (
+                      <li key={i} className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-lg">
+                        <span className="text-sm text-white truncate flex-1">{st}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeSubtask(i)}
+                          className="text-white/40 hover:text-red-400 transition-colors shrink-0"
+                          aria-label={`Remove subtask: ${st}`}
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    placeholder="Add a subtask..."
+                    value={newSubtask}
+                    onChange={(e) => setNewSubtask(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { e.preventDefault(); addSubtask(); }
+                      if (e.key === "Escape") setNewSubtask("");
+                    }}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={addSubtask}
+                    disabled={!newSubtask.trim()}
+                  >
+                    Add
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm text-white/70 uppercase tracking-wider shrink-0">
+                    Assign to
+                  </span>
+                  <Input
+                    type="text"
+                    placeholder="Search..."
+                    value={assigneeSearch}
+                    onChange={(e) => setAssigneeSearch(e.target.value)}
+                  />
+                </div>
                 <div className="space-y-1 max-h-32 overflow-y-auto border border-white/10 rounded-lg p-2">
-                  {users.length === 0 ? (
-                    <span className="text-white/30 text-sm">No users</span>
+                  {filteredUsers.length === 0 ? (
+                    <span className="text-white/30 text-sm">
+                      {users.length === 0 ? "No users" : "No matches"}
+                    </span>
                   ) : (
-                    users.map((user) => (
+                    filteredUsers.map((user) => (
                       <label
                         key={user.id}
                         className="flex items-center gap-2 px-2 py-1 rounded hover:bg-white/5 cursor-pointer"

@@ -26,9 +26,11 @@ interface SortableTaskItemProps {
   isAdmin: boolean;
   onTaskClick: (taskId: string) => void;
   onOptIn: (taskId: string) => void;
+  onOptOut: (taskId: string) => void;
+  onSubtaskToggle: (subtaskId: string, newStatus: string) => void;
 }
 
-function SortableTaskItem({ task, currentUserId, isAdmin, onTaskClick, onOptIn }: SortableTaskItemProps) {
+function SortableTaskItem({ task, currentUserId, isAdmin, onTaskClick, onOptIn, onOptOut, onSubtaskToggle }: SortableTaskItemProps) {
   const {
     attributes,
     listeners,
@@ -53,6 +55,8 @@ function SortableTaskItem({ task, currentUserId, isAdmin, onTaskClick, onOptIn }
         currentUserId={currentUserId}
         onClick={() => onTaskClick(task.id)}
         onOptIn={onOptIn}
+        onOptOut={onOptOut}
+        onSubtaskToggle={onSubtaskToggle}
         dragHandleProps={isAdmin ? { ...attributes, ...listeners } : undefined}
       />
     </div>
@@ -65,10 +69,12 @@ interface TaskListProps {
   isAdmin: boolean;
   onTaskClick: (taskId: string) => void;
   onOptIn: (taskId: string) => void;
+  onOptOut: (taskId: string) => void;
+  onSubtaskToggle: (subtaskId: string, newStatus: string) => void;
   onReorder: (taskIds: string[]) => void;
 }
 
-export function TaskList({ tasks, currentUserId, isAdmin, onTaskClick, onOptIn, onReorder }: TaskListProps) {
+export function TaskList({ tasks, currentUserId, isAdmin, onTaskClick, onOptIn, onOptOut, onSubtaskToggle, onReorder }: TaskListProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -97,19 +103,32 @@ export function TaskList({ tasks, currentUserId, isAdmin, onTaskClick, onOptIn, 
     );
   }
 
+  const priorityBar = (
+    <div className="flex flex-col items-center gap-1 pt-1 pb-1 mr-3 flex-shrink-0 select-none">
+      <span className="text-[10px] font-medium tracking-wider uppercase text-orange-400/80">High</span>
+      <div className="w-1 flex-1 rounded-full bg-gradient-to-b from-orange-500 via-yellow-500/60 to-blue-500/30" />
+      <span className="text-[10px] font-medium tracking-wider uppercase text-blue-400/50">Low</span>
+    </div>
+  );
+
   if (!isAdmin) {
     // Non-admin: static list, no drag-and-drop
     return (
-      <div className="space-y-3">
-        {tasks.map((task) => (
-          <TaskCard
-            key={task.id}
-            task={task}
-            currentUserId={currentUserId}
-            onClick={() => onTaskClick(task.id)}
-            onOptIn={onOptIn}
-          />
-        ))}
+      <div className="flex">
+        {priorityBar}
+        <div className="space-y-3 flex-1 min-w-0">
+          {tasks.map((task) => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              currentUserId={currentUserId}
+              onClick={() => onTaskClick(task.id)}
+              onOptIn={onOptIn}
+              onOptOut={onOptOut}
+              onSubtaskToggle={onSubtaskToggle}
+            />
+          ))}
+        </div>
       </div>
     );
   }
@@ -117,17 +136,22 @@ export function TaskList({ tasks, currentUserId, isAdmin, onTaskClick, onOptIn, 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-        <div className="space-y-3">
-          {tasks.map((task) => (
-            <SortableTaskItem
-              key={task.id}
-              task={task}
-              currentUserId={currentUserId}
-              isAdmin={isAdmin}
-              onTaskClick={onTaskClick}
-              onOptIn={onOptIn}
-            />
-          ))}
+        <div className="flex">
+          {priorityBar}
+          <div className="space-y-3 flex-1 min-w-0">
+            {tasks.map((task) => (
+              <SortableTaskItem
+                key={task.id}
+                task={task}
+                currentUserId={currentUserId}
+                isAdmin={isAdmin}
+                onTaskClick={onTaskClick}
+                onOptIn={onOptIn}
+                onOptOut={onOptOut}
+                onSubtaskToggle={onSubtaskToggle}
+              />
+            ))}
+          </div>
         </div>
       </SortableContext>
     </DndContext>

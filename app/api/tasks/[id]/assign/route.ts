@@ -18,13 +18,7 @@ export async function POST(
   }
 
   // Anyone can opt in — INSERT OR IGNORE handles duplicates
-  taskAssigneeQueries.add.run(id, session.user.id);
-
-  // Auto-transition from "todo" to "in_progress" when someone opts in
-  if (task.status === 'todo') {
-    const now = new Date().toISOString();
-    taskQueries.updateStatus.run('in_progress', now, id);
-  }
+  taskAssigneeQueries.add.run(id, session.user.id, 'opted_in');
 
   return NextResponse.json({ success: true });
 }

@@ -17,6 +17,7 @@ import { Button, Card, CardContent, Input, Select } from "@/components/ui";
 
 interface StatsChartProps {
   users: { userId: string; userName: string }[];
+  period: string;
 }
 
 interface SeriesEntry {
@@ -29,17 +30,34 @@ interface ChartData {
   series: SeriesEntry[];
 }
 
-function getMonday(): string {
+function getDateRange(period: string): { start: string; end: string } {
   const now = new Date();
-  const day = now.getDay();
-  const diff = day === 0 ? 6 : day - 1;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - diff);
-  return monday.toISOString().slice(0, 10);
-}
-
-function getToday(): string {
-  return new Date().toISOString().slice(0, 10);
+  switch (period) {
+    case "month": {
+      const first = new Date(now.getFullYear(), now.getMonth(), 1);
+      const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      return {
+        start: first.toISOString().slice(0, 10),
+        end: last.toISOString().slice(0, 10),
+      };
+    }
+    case "all":
+      return {
+        start: "2020-01-01",
+        end: now.toISOString().slice(0, 10),
+      };
+    case "week":
+    default: {
+      const day = now.getDay();
+      const diff = day === 0 ? 6 : day - 1;
+      const monday = new Date(now);
+      monday.setDate(now.getDate() - diff);
+      return {
+        start: monday.toISOString().slice(0, 10),
+        end: now.toISOString().slice(0, 10),
+      };
+    }
+  }
 }
 
 const formatHours = (sec: number) => (sec / 3600).toFixed(1) + "h";
@@ -75,13 +93,21 @@ const CustomTooltip = ({
   );
 };
 
-export default function StatsChart({ users }: StatsChartProps) {
+export default function StatsChart({ users, period }: StatsChartProps) {
   const [chartType, setChartType] = useState<"line" | "bar">("line");
   const [selectedUser, setSelectedUser] = useState("all");
-  const [startDate, setStartDate] = useState(getMonday);
-  const [endDate, setEndDate] = useState(getToday);
+  const initialRange = getDateRange(period);
+  const [startDate, setStartDate] = useState(initialRange.start);
+  const [endDate, setEndDate] = useState(initialRange.end);
   const [data, setData] = useState<ChartData>({ days: [], series: [] });
   const [isLoading, setIsLoading] = useState(false);
+
+  // Sync date range when the period selector changes
+  useEffect(() => {
+    const range = getDateRange(period);
+    setStartDate(range.start);
+    setEndDate(range.end);
+  }, [period]);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);

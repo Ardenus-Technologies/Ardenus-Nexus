@@ -4,21 +4,13 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import type { Task } from "@/types";
 
-const priorityColors: Record<string, string> = {
-  high: "bg-red-400",
-  medium: "bg-yellow-400",
-  low: "bg-blue-400",
-};
-
 const statusLabels: Record<string, string> = {
   todo: "To Do",
-  in_progress: "In Progress",
-  done: "Done",
+  done: "Completed",
 };
 
 const statusStyles: Record<string, string> = {
   todo: "bg-white/10 text-white/70",
-  in_progress: "bg-yellow-500/20 text-yellow-300",
   done: "bg-green-500/20 text-green-300",
 };
 
@@ -27,10 +19,12 @@ interface TaskCardProps {
   currentUserId: string;
   onClick: () => void;
   onOptIn: (taskId: string) => void;
+  onOptOut: (taskId: string) => void;
+  onSubtaskToggle: (subtaskId: string, newStatus: string) => void;
   dragHandleProps?: Record<string, unknown>;
 }
 
-export function TaskCard({ task, currentUserId, onClick, onOptIn, dragHandleProps }: TaskCardProps) {
+export function TaskCard({ task, currentUserId, onClick, onOptIn, onOptOut, onSubtaskToggle, dragHandleProps }: TaskCardProps) {
   const doneSubtasks = task.subtasks.filter((s) => s.status === "done").length;
   const totalSubtasks = task.subtasks.length;
 
@@ -39,8 +33,10 @@ export function TaskCard({ task, currentUserId, onClick, onOptIn, dragHandleProp
     task.status !== "done" &&
     new Date(task.dueDate) < new Date();
 
-  const isOptedIn = task.assignees.some((a) => a.id === currentUserId);
-  const showOptIn = !isOptedIn && task.status !== "done";
+  const isAssigned = task.assignees.some((a) => a.id === currentUserId);
+  const isOptedIn = task.optedIn.some((a) => a.id === currentUserId);
+  const showOptIn = !isAssigned && !isOptedIn && task.status !== "done";
+  const showOptOut = !isAssigned && isOptedIn && task.status !== "done";
 
   return (
     <motion.div
@@ -73,9 +69,6 @@ export function TaskCard({ task, currentUserId, onClick, onOptIn, dragHandleProp
           </button>
         )}
 
-        {/* Priority dot */}
-        <div className={`w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0 ${priorityColors[task.priority]}`} />
-
         <div className="flex-1 min-w-0">
           {/* Title row */}
           <div className="flex items-center gap-2 mb-1">
@@ -91,10 +84,22 @@ export function TaskCard({ task, currentUserId, onClick, onOptIn, dragHandleProp
           <div className="flex items-center gap-3 text-sm text-white/50 flex-wrap">
             {task.assignees.length > 0 ? (
               <span className="truncate">
-                {task.assignees.map((a) => a.name).join(", ")}
+                <span className="text-white/40">Assigned:</span>{" "}
+                {task.assignees.slice(0, 3).map((a) => a.name).join(", ")}
+                {task.assignees.length > 3 && ` +${task.assignees.length - 3} more`}
               </span>
             ) : (
               <span className="text-white/30 italic">Unassigned</span>
+            )}
+
+            {task.optedIn.length > 0 && (
+              <span className="truncate text-white/40">
+                Opted In:{" "}
+                <span className="text-white/50">
+                  {task.optedIn.slice(0, 3).map((a) => a.name).join(", ")}
+                  {task.optedIn.length > 3 && ` +${task.optedIn.length - 3} more`}
+                </span>
+              </span>
             )}
 
             {task.dueDate && (
@@ -128,24 +133,24 @@ export function TaskCard({ task, currentUserId, onClick, onOptIn, dragHandleProp
             <div className="mt-2 space-y-1 border-t border-white/5 pt-2">
               {task.subtasks.map((subtask) => (
                 <div key={subtask.id} className="flex items-center gap-2 text-sm">
-                  <div
-                    className={`w-3.5 h-3.5 rounded border flex-shrink-0 flex items-center justify-center ${
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSubtaskToggle(subtask.id, subtask.status === "done" ? "todo" : "done");
+                    }}
+                    className={`w-3.5 h-3.5 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${
                       subtask.status === "done"
-                        ? "bg-green-500/30 border-green-500/50"
-                        : subtask.status === "in_progress"
-                          ? "bg-yellow-500/20 border-yellow-500/40"
-                          : "border-white/20"
+                        ? "bg-green-500/30 border-green-500/50 hover:bg-green-500/40"
+                        : "border-white/20 hover:border-white/40"
                     }`}
+                    aria-label={`Mark "${subtask.title}" as ${subtask.status === "done" ? "todo" : "done"}`}
                   >
                     {subtask.status === "done" && (
                       <svg className="w-2.5 h-2.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                       </svg>
                     )}
-                    {subtask.status === "in_progress" && (
-                      <div className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
-                    )}
-                  </div>
+                  </button>
                   <span className={`truncate ${subtask.status === "done" ? "line-through text-white/30" : "text-white/60"}`}>
                     {subtask.title}
                   </span>
@@ -155,7 +160,7 @@ export function TaskCard({ task, currentUserId, onClick, onOptIn, dragHandleProp
           )}
         </div>
 
-        {/* Opt In button */}
+        {/* Opt In / Opt Out button */}
         {showOptIn && (
           <Button
             variant="secondary"
@@ -167,6 +172,19 @@ export function TaskCard({ task, currentUserId, onClick, onOptIn, dragHandleProp
             className="flex-shrink-0 text-xs"
           >
             Opt In
+          </Button>
+        )}
+        {showOptOut && (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOptOut(task.id);
+            }}
+            className="flex-shrink-0 text-xs border-red-500/50 text-red-400 hover:bg-red-500 hover:text-white hover:border-red-500"
+          >
+            Opt Out
           </Button>
         )}
       </div>

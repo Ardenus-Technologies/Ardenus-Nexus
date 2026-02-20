@@ -7,21 +7,13 @@ import { SubtaskList } from "./SubtaskList";
 import { CommentSection } from "./CommentSection";
 import type { Task, TaskComment } from "@/types";
 
-const priorityColors: Record<string, string> = {
-  high: "text-red-400",
-  medium: "text-yellow-400",
-  low: "text-blue-400",
-};
-
 const statusLabels: Record<string, string> = {
   todo: "To Do",
-  in_progress: "In Progress",
-  done: "Done",
+  done: "Completed",
 };
 
 const statusStyles: Record<string, string> = {
   todo: "bg-white/10 text-white/70",
-  in_progress: "bg-yellow-500/20 text-yellow-300",
   done: "bg-green-500/20 text-green-300",
 };
 
@@ -154,14 +146,6 @@ export function TaskDetailModal({
     onTaskUpdated();
   };
 
-  const handleAddAssignee = async (userId: string) => {
-    // Use the PUT endpoint to add to the assignee list
-    if (!task) return;
-    const currentIds = task.assignees.map((a) => a.id);
-    if (currentIds.includes(userId)) return;
-    await saveField({ assigneeIds: [...currentIds, userId] });
-  };
-
   const handleDelete = async () => {
     await fetch(`/api/tasks/${taskId}`, { method: "DELETE" });
     onTaskUpdated();
@@ -209,12 +193,21 @@ export function TaskDetailModal({
     await fetchTask();
   };
 
-  const isAssignee = task?.assignees.some((a) => a.id === currentUserId) ?? false;
+  const isAssigned = task?.assignees.some((a) => a.id === currentUserId) ?? false;
+  const isOptedIn = task?.optedIn.some((a) => a.id === currentUserId) ?? false;
+  const canChangeStatus = isAssigned || isOptedIn;
 
   // Users not yet assigned (for the picker)
   const unassignedUsers = task
     ? users.filter((u) => !task.assignees.some((a) => a.id === u.id))
     : [];
+
+  const handleAddAssignee = async (userId: string) => {
+    if (!task) return;
+    const currentIds = task.assignees.map((a) => a.id);
+    if (currentIds.includes(userId)) return;
+    await saveField({ assigneeIds: [...currentIds, userId] });
+  };
 
   return (
     <AnimatePresence>
@@ -252,9 +245,6 @@ export function TaskDetailModal({
               <div className="flex items-start justify-between mb-6">
                 <div className="flex-1 min-w-0 mr-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className={`text-xs uppercase tracking-wider font-medium ${priorityColors[task.priority]}`}>
-                      {task.priority} priority
-                    </span>
                     <span className={`px-2 py-0.5 text-xs rounded-full ${statusStyles[task.status]}`}>
                       {statusLabels[task.status]}
                     </span>
@@ -342,9 +332,9 @@ export function TaskDetailModal({
 
               {/* Meta info */}
               <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
-                {/* Assignees with inline add */}
+                {/* Assigned (admin-managed, multiple) */}
                 <div>
-                  <span className="text-white/40 block mb-1">Assignees</span>
+                  <span className="text-white/40 block mb-1">Assigned</span>
                   <div className="flex flex-wrap gap-2 items-center">
                     {task.assignees.map((a) => (
                       <span
@@ -368,7 +358,6 @@ export function TaskDetailModal({
                     {task.assignees.length === 0 && (
                       <span className="text-white/30 italic text-xs">Unassigned</span>
                     )}
-                    {/* Add assignee button + dropdown */}
                     {isAdmin && unassignedUsers.length > 0 && (
                       <div className="relative" ref={assigneePickerRef}>
                         <button
@@ -401,6 +390,34 @@ export function TaskDetailModal({
                     )}
                   </div>
                 </div>
+                {/* Opted in (self-service) */}
+                <div>
+                  <span className="text-white/40 block mb-1">Opted in</span>
+                  <div className="flex flex-wrap gap-2 items-center">
+                    {task.optedIn.map((a) => (
+                      <span
+                        key={a.id}
+                        className="inline-flex items-center gap-1.5 px-2 py-1 bg-white/5 border border-white/10 rounded-md text-white text-xs"
+                      >
+                        {a.name}
+                        {isAdmin && (
+                          <button
+                            onClick={() => handleRemoveAssignee(a.id)}
+                            className="text-white/40 hover:text-red-400 transition-colors"
+                            aria-label={`Remove ${a.name}`}
+                          >
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
+                      </span>
+                    ))}
+                    {task.optedIn.length === 0 && (
+                      <span className="text-white/30 italic text-xs">No one yet</span>
+                    )}
+                  </div>
+                </div>
                 <div>
                   <span className="text-white/40 block mb-1">Created by</span>
                   <span className="text-white">{task.creatorName}</span>
@@ -424,19 +441,19 @@ export function TaskDetailModal({
               {/* Actions */}
               <div className="flex flex-wrap gap-2 mb-6 pb-6 border-b border-white/10">
                 {/* Opt In / Leave */}
-                {!isAssignee && task.status !== "done" && (
+                {!isOptedIn && !isAssigned && task.status !== "done" && (
                   <Button variant="secondary" size="sm" onClick={handleOptIn}>
                     Opt In
                   </Button>
                 )}
-                {isAssignee && task.status !== "done" && (
+                {isOptedIn && task.status !== "done" && (
                   <Button variant="ghost" size="sm" onClick={handleLeave}>
                     Leave
                   </Button>
                 )}
 
-                {/* Mark Complete */}
-                {(isAdmin || isAssignee) && task.status !== "done" && (
+                {/* Mark Complete — assigned person OR opted-in user OR admin */}
+                {(isAdmin || canChangeStatus) && task.status !== "done" && (
                   <Button variant="primary" size="sm" onClick={() => handleStatusChange("done")}>
                     Mark Complete
                   </Button>

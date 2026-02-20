@@ -4,11 +4,13 @@ import { signOut, useSession } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui";
+import { useMultiPane } from "@/components/MultiPaneContext";
 
 export function Header() {
   const { data: session } = useSession();
   const router = useRouter();
   const pathname = usePathname();
+  const { isMultiPane, toggleMultiPane } = useMultiPane();
 
   // Don't render on login page
   if (pathname === "/login") return null;
@@ -20,6 +22,12 @@ export function Header() {
     signOut({ callbackUrl: "/login" });
   };
 
+  const handleNav = (path: string) => {
+    // Exit multi-pane mode when navigating via header buttons
+    if (isMultiPane) toggleMultiPane();
+    router.push(path);
+  };
+
   return (
     <motion.header
       className="sticky top-0 z-30 bg-black/90 backdrop-blur-sm border-b border-white/5 px-4 sm:px-6 lg:px-10 py-4 flex items-center justify-between gap-4 w-full"
@@ -29,11 +37,11 @@ export function Header() {
     >
       <div
         className="cursor-pointer flex-shrink-0"
-        onClick={() => router.push("/")}
+        onClick={() => handleNav("/")}
         role="button"
         tabIndex={0}
         aria-label="Go to home page"
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") router.push("/"); }}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleNav("/"); }}
       >
         <p className="text-eyebrow mb-0.5">Ardenus</p>
       </div>
@@ -47,7 +55,7 @@ export function Header() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => router.push("/team")}
+          onClick={() => handleNav("/team")}
           aria-label="Team"
         >
           <svg
@@ -70,7 +78,7 @@ export function Header() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => router.push("/tasks")}
+          onClick={() => handleNav("/tasks")}
           aria-label="Tasks"
         >
           <svg
@@ -95,7 +103,7 @@ export function Header() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => router.push("/admin/stats")}
+              onClick={() => handleNav("/admin/stats")}
             >
               <span className="hidden sm:inline">Stats</span>
               <svg className="w-4 h-4 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -105,16 +113,35 @@ export function Header() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => router.push("/admin/users")}
+              onClick={() => handleNav("/admin/users")}
             >
               <span className="hidden sm:inline">Admin</span>
               <svg className="w-4 h-4 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.11 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </Button>
           </>
         )}
+
+        {/* Multi-pane toggle */}
+        <Button
+          variant={isMultiPane ? "secondary" : "ghost"}
+          size="sm"
+          onClick={toggleMultiPane}
+          aria-label={isMultiPane ? "Exit multi-pane mode" : "Enter multi-pane mode"}
+          title={isMultiPane ? "Exit multi-pane mode" : "Enter multi-pane mode"}
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v5a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 14a1 1 0 011-1h4a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1v-5zM14 14a1 1 0 011-1h4a1 1 0 011 1v5a1 1 0 01-1 1h-4a1 1 0 01-1-1v-5z" />
+          </svg>
+        </Button>
 
         <Button variant="secondary" size="sm" onClick={handleSignOut} className="whitespace-nowrap">
           <svg className="w-4 h-4 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
